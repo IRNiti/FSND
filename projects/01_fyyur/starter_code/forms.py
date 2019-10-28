@@ -10,6 +10,7 @@ class ShowForm(Form):
     venue_id = StringField(
         'venue_id'
     )
+    #validate that show time is not in the past
     start_time = DateTimeField(
         'start_time',
         validators=[DataRequired()],
