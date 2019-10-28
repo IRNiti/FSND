@@ -101,6 +101,9 @@ class Genre(db.Model):
   artist_genres = db.relationship('Artist', secondary=artist_genre, backref=db.backref('artist_genres', lazy=True))
   venue_genres = db.relationship('Venue', secondary=venue_genre, backref=db.backref('venue_genres', lazy=True))
 
+  def __repr__(self):
+    return f'<Genre {self.id}, {self.name}>'
+
 class City(db.Model):
   __tablename__ = 'City'
 
@@ -110,6 +113,9 @@ class City(db.Model):
   state = db.Column(db.String(2))
   artist_city = db.relationship('Artist', backref=db.backref('artist_city', lazy=True))
   venue_city = db.relationship('Venue', backref=db.backref('venue_city', lazy=True))
+
+  def __repr__(self):
+    return f'<City {self.id}, {self.city}, {self.state}>'
 
 
 #----------------------------------------------------------------------------#
@@ -230,6 +236,64 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
+  form = VenueForm()
+
+  # print(request.form)
+  # print(request.form.get('seeking_talent', False))
+  # print(request.form['genres'])
+  # print(form.genres.data)
+  # print(form.genres.data[0])
+  print(request.form['seeking_talent'])
+
+  want_talent = request.form.get('seeking_talent', False)
+  if(want_talent == 'y'):
+    want_talent = True
+  
+  new_venue = Venue(
+    name = request.form['name'],
+    address=request.form['address'],
+    phone=request.form['phone'],
+    image_link=request.form['image_link'],
+    facebook_link=request.form['facebook_link'],
+    website=request.form['website'],
+    seeking_talent=want_talent,
+    seeking_description=request.form['seeking_description'])
+
+  venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+
+  if(len(venue_city) == 0):
+    new_city = City(city=request.form['city'], state=request.form['state'])
+    db.session.add(new_city)
+    db.session.commit()
+    new_venue.city = new_city.id
+  else:
+    new_venue.city = venue_city[0].id
+
+  venue_genres_input = form.genres.data
+  genre_list = []
+
+  #find a better way to do this since it's horrible
+  for genre_input in venue_genres_input:
+    db_value = Genre.query.filter_by(name=genre_input).all()
+    if(len(db_value) == 0):
+      new_genre = Genre(name=genre_input)
+      db.session.add(new_genre)
+      db.session.commit()
+      genre_list.append(new_genre)
+      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
+      # db.session.add(new_venue_genre)
+      # db.session.commit()
+    else:
+      genre_list.append(db_value[0])
+      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
+      # db.session.add(new_venue_genre)
+      # db.session.commit()
+
+  new_venue.genres = genre_list
+  db.session.add(new_venue)
+  db.session.commit()
+
+  
 
   # on successful db insert, flash success
   flash('Venue ' + request.form['name'] + ' was successfully listed!')
