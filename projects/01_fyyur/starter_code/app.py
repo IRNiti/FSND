@@ -4,6 +4,7 @@
 
 import json
 import datetime
+import sys
 import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
@@ -85,6 +86,7 @@ class Artist(db.Model):
   genres = db.relationship('Genre', secondary=artist_genre, backref=db.backref('artists', lazy=True))
   image_link = db.Column(db.String(500))
   facebook_link = db.Column(db.String(120))
+  website = db.Column(db.String())
   seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
   seeking_description = db.Column(db.String())
   show = db.relationship('Show', backref=db.backref('artists', lazy=True))
@@ -164,7 +166,8 @@ def venues():
         # should find a better way to do this since query in nested for loop
         venue_entry["num_upcoming_shows"] = Show.query.filter_by(venue_id = venue.id).count()
         entry["venues"].append(venue_entry)
-    real_data.append(entry)
+    if(len(entry["venues"]) > 0):
+      real_data.append(entry)
 
 
   return render_template('pages/venues.html', areas=real_data);
@@ -231,72 +234,84 @@ def create_venue_form():
   return render_template('forms/new_venue.html', form=form)
 
 
-#TODO*******************************
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
   form = VenueForm()
+  error = False
 
   # print(request.form)
   # print(request.form.get('seeking_talent', False))
   # print(request.form['genres'])
   # print(form.genres.data)
   # print(form.genres.data[0])
-  print(request.form['seeking_talent'])
+  #print(request.form['seeking_talent'])
 
-  want_talent = request.form.get('seeking_talent', False)
-  if(want_talent == 'y'):
-    want_talent = True
-  
-  new_venue = Venue(
-    name = request.form['name'],
-    address=request.form['address'],
-    phone=request.form['phone'],
-    image_link=request.form['image_link'],
-    facebook_link=request.form['facebook_link'],
-    website=request.form['website'],
-    seeking_talent=want_talent,
-    seeking_description=request.form['seeking_description'])
+  try:
+    #print(request.form['seeking_talent'])
+    want_talent = request.form.get('seeking_talent', False)
+    if(want_talent == 'y'):
+      want_talent = True
+    
+    new_venue = Venue(
+      name = request.form['name'],
+      address=request.form['address'],
+      phone=request.form['phone'],
+      image_link=request.form['image_link'],
+      facebook_link=request.form['facebook_link'],
+      website=request.form['website'],
+      seeking_talent=want_talent,
+      seeking_description=request.form['seeking_description'])
 
-  venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
 
-  if(len(venue_city) == 0):
-    new_city = City(city=request.form['city'], state=request.form['state'])
-    db.session.add(new_city)
-    db.session.commit()
-    new_venue.city = new_city.id
-  else:
-    new_venue.city = venue_city[0].id
-
-  venue_genres_input = form.genres.data
-  genre_list = []
-
-  #find a better way to do this since it's horrible
-  for genre_input in venue_genres_input:
-    db_value = Genre.query.filter_by(name=genre_input).all()
-    if(len(db_value) == 0):
-      new_genre = Genre(name=genre_input)
-      db.session.add(new_genre)
+    if(len(venue_city) == 0):
+      new_city = City(city=request.form['city'], state=request.form['state'])
+      db.session.add(new_city)
       db.session.commit()
-      genre_list.append(new_genre)
-      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
-      # db.session.add(new_venue_genre)
-      # db.session.commit()
+      new_venue.city = new_city.id
     else:
-      genre_list.append(db_value[0])
-      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
-      # db.session.add(new_venue_genre)
-      # db.session.commit()
+      new_venue.city = venue_city[0].id
 
-  new_venue.genres = genre_list
-  db.session.add(new_venue)
-  db.session.commit()
+    venue_genres_input = form.genres.data
+    genre_list = []
+
+    #find a better way to do this since it's horrible
+    for genre_input in venue_genres_input:
+      db_value = Genre.query.filter_by(name=genre_input).all()
+      if(len(db_value) == 0):
+        new_genre = Genre(name=genre_input)
+        db.session.add(new_genre)
+        db.session.commit()
+        genre_list.append(new_genre)
+        # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
+        # db.session.add(new_venue_genre)
+        # db.session.commit()
+      else:
+        genre_list.append(db_value[0])
+        # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
+        # db.session.add(new_venue_genre)
+        # db.session.commit()
+
+    new_venue.genres = genre_list
+    db.session.add(new_venue)
+    db.session.commit()
+  except:
+    db.session.rollback()
+    error = True
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+  if error:
+    flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
+  else:
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
 
   
 
   # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  #flash('Venue ' + request.form['name'] + ' was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
@@ -452,8 +467,73 @@ def create_artist_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
 
+  form = ArtistForm()
+  error = False
+
+  # print(request.form)
+  # print(request.form.get('seeking_talent', False))
+  # print(request.form['genres'])
+  # print(form.genres.data)
+  # print(form.genres.data[0])
+  #print(request.form['seeking_talent'])
+
+  try:
+    #print(request.form['seeking_venue'])
+    want_venue = request.form.get('seeking_venue', False)
+    if(want_venue == 'y'):
+      want_venue = True
+    
+    new_artist = Artist(
+      name = request.form['name'],
+      phone=request.form['phone'],
+      image_link=request.form['image_link'],
+      facebook_link=request.form['facebook_link'],
+      website=request.form['website'],
+      seeking_venue=want_venue,
+      seeking_description=request.form['seeking_description'])
+
+    #test whether this works for cities with same name but different states
+    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+
+    #check if query returns more than one result
+    if(len(artist_city) == 0):
+      new_city = City(city=request.form['city'], state=request.form['state'])
+      db.session.add(new_city)
+      db.session.commit()
+      new_artist.city = new_city.id
+    else:
+      new_artist.city = artist_city[0].id
+
+    artist_genres_input = form.genres.data
+    genre_list = []
+
+    #find a better way to do this since it's horrible
+    for genre_input in artist_genres_input:
+      db_value = Genre.query.filter_by(name=genre_input).all()
+      if(len(db_value) == 0):
+        new_genre = Genre(name=genre_input)
+        db.session.add(new_genre)
+        db.session.commit()
+        genre_list.append(new_genre)
+      else:
+        #check if there is more than one result??
+        genre_list.append(db_value[0])
+
+    new_artist.genres = genre_list
+    db.session.add(new_artist)
+    db.session.commit()
+  except:
+    db.session.rollback()
+    error = True
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+  if error:
+    flash('An error occurred. Artist ' + request.form['name'] + ' could not be listed.')
+  else:
+    flash('Artist ' + request.form['name'] + ' was successfully listed!')
+
   # on successful db insert, flash success
-  flash('Artist ' + request.form['name'] + ' was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
   return render_template('pages/home.html')
