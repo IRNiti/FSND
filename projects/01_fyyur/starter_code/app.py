@@ -30,6 +30,7 @@ migrate = Migrate(app, db)
 # Models.
 #----------------------------------------------------------------------------#
 
+#add constraints for fields
 artist_genre = db.Table('Artist_Genre',
   db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), nullable=False),
   db.Column('genre_id', db.Integer, db.ForeignKey('Genre.id'), nullable=False)
@@ -172,21 +173,28 @@ def venues():
 
   return render_template('pages/venues.html', areas=real_data);
 
-#TODO*******************************
+
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  response={
-    "count": 1,
-    "data": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+
+  search_query = '%'+request.form.get('search_term', '')+'%'
+  search_venues = Venue.query.filter(Venue.name.ilike(search_query))
+  real_data = {}
+  real_data["data"] = []
+
+  for search_venue in search_venues:
+    entry = {}
+    entry["id"] = search_venue.id
+    entry["name"] = search_venue.name
+    entry["num_upcoming_shows"] = len(search_venue.show)
+    real_data["data"].append(entry)
+
+  real_data["count"] = len(real_data["data"])
+
+  return render_template('pages/search_venues.html', results=real_data, search_term=request.form.get('search_term', ''))
 
 
 @app.route('/venues/<int:venue_id>')
@@ -334,21 +342,29 @@ def artists():
   
   return render_template('pages/artists.html', artists=Artist.query.all())
 
-#TODO*******************************
+
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
   # search for "band" should return "The Wild Sax Band".
-  response={
-    "count": 1,
-    "data": [{
-      "id": 4,
-      "name": "Guns N Petals",
-      "num_upcoming_shows": 0,
-    }]
-  }
-  return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
+
+  search_query = '%'+request.form.get('search_term', '')+'%'
+  search_artists = Artist.query.filter(Artist.name.ilike(search_query))
+  real_data = {}
+  real_data["data"] = []
+
+  for search_artist in search_artists:
+    entry = {}
+    entry["id"] = search_artist.id
+    entry["name"] = search_artist.name
+    entry["num_upcoming_shows"] = len(search_artist.show)
+    real_data["data"].append(entry)
+
+  real_data["count"] = len(real_data["data"])
+
+  
+  return render_template('pages/search_artists.html', results=real_data, search_term=request.form.get('search_term', ''))
 
 
 @app.route('/artists/<int:artist_id>')
@@ -362,6 +378,7 @@ def show_artist(artist_id):
   print(data["name"])
   print(data["city"])
   print(artist.city)
+  #use a join instead of 2 queries
   data["state"] = City.query.get(artist.city).state
   print(data["state"])
   print(data["city"])
@@ -424,32 +441,113 @@ def edit_artist_submission(artist_id):
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
-#TODO*******************************
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
-  form = VenueForm()
-  venue={
-    "id": 1,
-    "name": "The Musical Hop",
-    "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
-    "address": "1015 Folsom Street",
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "123-123-1234",
-    "website": "https://www.themusicalhop.com",
-    "facebook_link": "https://www.facebook.com/TheMusicalHop",
-    "seeking_talent": True,
-    "seeking_description": "We are on the lookout for a local artist to play every two weeks. Please call us.",
-    "image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60"
-  }
+  
+  real_venue = Venue.query.get(venue_id)
+  venue_city = City.query.get(real_venue.city)
+  venue_genres = []
+
+  for genre in real_venue.genres:
+    venue_genres.append(genre.name)
+
+  form = VenueForm(
+    name=real_venue.name,
+    city=venue_city.city,
+    state=venue_city.state,
+    address=real_venue.address,
+    genres=venue_genres,
+    phone=real_venue.phone,
+    facebook_link=real_venue.facebook_link,
+    image_link=real_venue.image_link,
+    website=real_venue.website,
+    seeking_description=real_venue.seeking_description,
+    seeking_talent=real_venue.seeking_talent
+    )
+
   # TODO: populate form with values from venue with ID <venue_id>
-  return render_template('forms/edit_venue.html', form=form, venue=venue)
+  return render_template('forms/edit_venue.html', form=form, venue=real_venue)
 
 #TODO*******************************
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
   # TODO: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
+
+  print('starting to update venue')
+
+  form = VenueForm()
+  to_update = Venue.query.get(venue_id)
+
+  print('retrieved form and venue record')
+  #try:
+    #print(request.form['seeking_talent'])
+  want_talent = request.form.get('seeking_talent', False)
+  if(want_talent == 'y'):
+    want_talent = True
+  
+  print('processed seeking_talent field')
+  print(want_talent)
+  print(to_update.seeking_talent)
+
+  #TODO: implement functionality with seeking talent field
+  to_update.name = request.form['name'],
+  to_update.address=request.form['address'],
+  to_update.phone=request.form['phone'],
+  to_update.image_link=request.form['image_link'],
+  to_update.facebook_link=request.form['facebook_link'],
+  to_update.website=request.form['website'],
+  #to_update.seeking_talent=False,
+  to_update.seeking_description=request.form['seeking_description']
+
+  venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+
+  if(len(venue_city) == 0):
+    new_city = City(city=request.form['city'], state=request.form['state'])
+    db.session.add(new_city)
+    db.session.commit()
+    to_update.city = new_city.id
+  else:
+    to_update.city = venue_city[0].id
+
+  venue_genres_input = form.genres.data
+  genre_list = []
+
+  #find a better way to do this since it's horrible
+  for genre_input in venue_genres_input:
+    db_value = Genre.query.filter_by(name=genre_input).all()
+    if(len(db_value) == 0):
+      new_genre = Genre(name=genre_input)
+      db.session.add(new_genre)
+      db.session.commit()
+      genre_list.append(new_genre)
+      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
+      # db.session.add(new_venue_genre)
+      # db.session.commit()
+    else:
+      genre_list.append(db_value[0])
+      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
+      # db.session.add(new_venue_genre)
+      # db.session.commit()
+
+  to_update.genres = genre_list
+  print('finished updating venue fields')
+  print(to_update)
+
+  db.session.add(to_update)
+  db.session.commit()
+  print('new venue values commited to database')
+  # except:
+  #   db.session.rollback()
+  #   error = True
+  #   print(sys.exc_info())
+  # finally:
+  #   db.session.close()
+  # if error:
+  #   flash('An error occurred. Venue ' + request.form['name'] + ' could not be updated.')
+  # else:
+  #   flash('Venue ' + request.form['name'] + ' was successfully updated!')
+
   return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
@@ -466,6 +564,7 @@ def create_artist_submission():
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
+  #A user cannot submit an invalid form submission (e.g. using an invalid State enum, or with required fields missing; missing city, missing name, or missing genre is not required
 
   form = ArtistForm()
   error = False
