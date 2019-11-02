@@ -9,6 +9,7 @@ import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify
 from models import db
+from sqlalchemy import func
 from flask_moment import Moment
 from flask_migrate import Migrate
 import logging
@@ -25,7 +26,7 @@ app.config.from_object('config')
 db.init_app(app)
 migrate = Migrate(app, db)
 
-from models import Venue, Artist, Show, Genre, City, artist_genre, venue_genre
+from models import *
 
 
 #----------------------------------------------------------------------------#
@@ -56,23 +57,22 @@ def index():
 
 @app.route('/venues')
 def venues():
-  venues = Venue.query.all()
   cities = City.query.all()
+  venues = db.session.query(Venue, func.count(Show.id)).join(Show, isouter=True).group_by(Venue.id)
   real_data = []
+
   
   for city in cities:
     entry = {}
-    #update this to city.name
     entry["city"] = city.city
     entry["state"] = city.state
     entry["venues"] = []
     for venue in venues:
-      if(city.id == venue.city):
+      if(city.id == venue[0].city):
         venue_entry = {}
-        venue_entry["id"] = venue.id
-        venue_entry["name"] = venue.name
-        # should find a better way to do this since query in nested for loop
-        venue_entry["num_upcoming_shows"] = Show.query.filter_by(venue_id = venue.id).count()
+        venue_entry["id"] = venue[0].id
+        venue_entry["name"] = venue[0].name
+        venue_entry["num_upcoming_shows"] = venue[1]
         entry["venues"].append(venue_entry)
     if(len(entry["venues"]) > 0):
       real_data.append(entry)
@@ -83,9 +83,6 @@ def venues():
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
-  # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
-  # seach for Hop should return "The Musical Hop".
-  # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
 
   search_query = '%'+request.form.get('search_term', '')+'%'
   search_venues = Venue.query.filter(Venue.name.ilike(search_query))
