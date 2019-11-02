@@ -447,28 +447,94 @@ def show_artist(artist_id):
 #TODO*******************************
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
-  form = ArtistForm()
-  artist={
-    "id": 4,
-    "name": "Guns N Petals",
-    "genres": ["Rock n Roll"],
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "326-123-5000",
-    "website": "https://www.gunsnpetalsband.com",
-    "facebook_link": "https://www.facebook.com/GunsNPetals",
-    "seeking_venue": True,
-    "seeking_description": "Looking for shows to perform at in the San Francisco Bay Area!",
-    "image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
-  }
-  # TODO: populate form with fields from artist with ID <artist_id>
-  return render_template('forms/edit_artist.html', form=form, artist=artist)
+  real_artist = Artist.query.get(artist_id)
+  artist_city = City.query.get(real_artist.city)
+  artist_genres = []
+
+  for genre in real_artist.genres:
+    artist_genres.append(genre.name)
+
+  form = ArtistForm(
+    name=real_artist.name,
+    city=artist_city.city,
+    state=artist_city.state,
+    genres=artist_genres,
+    phone=real_artist.phone,
+    facebook_link=real_artist.facebook_link,
+    image_link=real_artist.image_link,
+    website=real_artist.website,
+    seeking_description=real_artist.seeking_description,
+    seeking_venue=real_artist.seeking_venue
+    )
+
+  return render_template('forms/edit_artist.html', form=form, artist=real_artist)
 
 #TODO*******************************
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
   # TODO: take values from the form submitted, and update existing
   # artist record with ID <artist_id> using the new attributes
+
+  form = ArtistForm(request.form)
+  to_update = Artist.query.get(artist_id)
+  error = False
+
+  try:
+    
+    #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
+    #so setting up False as default if nothing is found in the request
+    #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
+    want_venue = request.form.get('seeking_venue', False)
+    if(want_venue == 'y'):
+      want_venue = True
+
+    to_update.name = request.form['name']
+    to_update.phone=request.form['phone']
+    to_update.image_link=request.form['image_link']
+    to_update.facebook_link=request.form['facebook_link']
+    to_update.website=request.form['website']
+    to_update.seeking_venue=want_venue
+    to_update.seeking_description=request.form['seeking_description']
+
+    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+
+
+    if(len(artist_city) == 0):
+      new_city = City(city=request.form['city'], state=request.form['state'])
+      db.session.add(new_city)
+      db.session.commit()
+      to_update.city = new_city.id
+    else:
+      to_update.city = artist_city[0].id
+
+    artist_genres_input = form.genres.data
+    genre_list = []
+
+    #find a better way to do this since it's horrible
+    for genre_input in artist_genres_input:
+      db_value = Genre.query.filter_by(name=genre_input).all()
+      if(len(db_value) == 0):
+        new_genre = Genre(name=genre_input)
+        db.session.add(new_genre)
+        db.session.commit()
+        genre_list.append(new_genre)
+      else:
+        genre_list.append(db_value[0])
+
+    to_update.genres = genre_list
+
+    db.session.add(to_update)
+    db.session.commit()
+  except:
+    db.session.rollback()
+    error = True
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+  if error:
+    flash('An error occurred. Artist ' + request.form['name'] + ' could not be updated.')
+  else:
+    flash('Artist ' + request.form['name'] + ' was successfully updated!')
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
