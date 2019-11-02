@@ -87,7 +87,6 @@ class City(db.Model):
   __tablename__ = 'City'
 
   id = db.Column(db.Integer, primary_key=True)
-  #update this to name so it's not city.city
   city = db.Column(db.String)
   state = db.Column(db.String(2))
   artist_city = db.relationship('Artist', backref=db.backref('artist_city', lazy=True))

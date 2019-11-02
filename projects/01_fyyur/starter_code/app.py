@@ -107,6 +107,8 @@ def show_venue(venue_id):
   shows = db.session.query(Show, Artist).filter((Show.venue_id == venue_id) & (Show.artist_id == Artist.id)).all()
   venue = db.session.query(Venue, City).join(City).filter(Venue.id == venue_id).first()
 
+  # initialize data dictionary with values retrieved from the Venue table
+  # since venue represents a tuple of type (Venue, City), we're grabbing only the venue portion for initialization
   data = vars(venue[0])
   data["state"] = venue[1].state
   data["city"] = venue[1].city
@@ -151,6 +153,10 @@ def create_venue_submission():
 
   try:
     if(form.validate()):
+
+      #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
+      #so setting up False as default if nothing is found in the request
+      #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
       want_talent = request.form.get('seeking_talent', False)
       if(want_talent == 'y'):
         want_talent = True
@@ -230,6 +236,8 @@ def delete_venue(venue_id):
     print(sys.exc_info())
   finally:
     db.session.close()
+
+  # handleForm.js will take care to redirect to index and show success or error message to user
   if error:
     return jsonify({ 'success': False })
   else:
@@ -272,6 +280,8 @@ def show_artist(artist_id):
   genres = Genre.query.join(artist_genre).filter((artist_genre.c.genre_id == Genre.id) & (artist_genre.c.artist_id == artist_id)).all()
   shows = db.session.query(Show, Venue).filter((Show.artist_id == artist_id) & (Show.venue_id == Venue.id)).all()
 
+  # initialize data dictionary with values retrieved from the Artist table
+  # since artist represents a tuple of type (Artist, City), we're grabbing only the artist portion for initialization
   data = vars(artist[0])
   data["state"] = artist[1].state
   data["city"] = artist[1].city
@@ -349,29 +359,28 @@ def edit_artist_submission(artist_id):
     to_update.seeking_venue=want_venue
     to_update.seeking_description=request.form['seeking_description']
 
-    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
 
-
-    if(len(artist_city) == 0):
+    if artist_city is None:
       new_city = City(city=request.form['city'], state=request.form['state'])
       db.session.add(new_city)
       db.session.commit()
       to_update.city = new_city.id
     else:
-      to_update.city = artist_city[0].id
+      to_update.city = artist_city.id
 
     artist_genres_input = form.genres.data
     genre_list = []
 
     for genre_input in artist_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).all()
-      if(len(db_value) == 0):
+      db_value = Genre.query.filter_by(name=genre_input).first()
+      if db_value is None:
         new_genre = Genre(name=genre_input)
         db.session.add(new_genre)
         db.session.commit()
         genre_list.append(new_genre)
       else:
-        genre_list.append(db_value[0])
+        genre_list.append(db_value)
 
     to_update.genres = genre_list
 
@@ -441,29 +450,29 @@ def edit_venue_submission(venue_id):
     to_update.seeking_talent=want_talent
     to_update.seeking_description=request.form['seeking_description']
 
-    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
 
 
-    if(len(venue_city) == 0):
+    if venue_city is None:
       new_city = City(city=request.form['city'], state=request.form['state'])
       db.session.add(new_city)
       db.session.commit()
       to_update.city = new_city.id
     else:
-      to_update.city = venue_city[0].id
+      to_update.city = venue_city.id
 
     venue_genres_input = form.genres.data
     genre_list = []
 
     for genre_input in venue_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).all()
-      if(len(db_value) == 0):
+      db_value = Genre.query.filter_by(name=genre_input).first()
+      if db_value is None:
         new_genre = Genre(name=genre_input)
         db.session.add(new_genre)
         db.session.commit()
         genre_list.append(new_genre)
       else:
-        genre_list.append(db_value[0])
+        genre_list.append(db_value)
 
     to_update.genres = genre_list
 
@@ -500,6 +509,10 @@ def create_artist_submission():
 
   try:
     if(form.validate()):
+
+      #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
+      #so setting up False as default if nothing is found in the request
+      #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
       want_venue = request.form.get('seeking_venue', False)
       if(want_venue == 'y'):
         want_venue = True
