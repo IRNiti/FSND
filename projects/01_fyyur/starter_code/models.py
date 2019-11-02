@@ -37,7 +37,7 @@ class Venue(db.Model):
   __tablename__ = 'Venue'
 
   id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String, nullable=False)
+  name = db.Column(db.String, nullable=False, unique=True)
   city = db.Column(db.Integer, db.ForeignKey('City.id', ondelete="SET NULL"))
   address = db.Column(db.String(120))
   phone = db.Column(db.String(120))
@@ -57,7 +57,7 @@ class Artist(db.Model):
   __tablename__ = 'Artist'
 
   id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String, nullable=False)
+  name = db.Column(db.String, nullable=False, unique=True)
   city = db.Column(db.Integer, db.ForeignKey('City.id', ondelete="SET NULL"))
   phone = db.Column(db.String(120))
   genres = db.relationship('Genre', secondary=artist_genre, backref=db.backref('artists', lazy=True))
