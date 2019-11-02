@@ -1,23 +1,34 @@
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import BooleanField, StringField, SelectField, SelectMultipleField, DateTimeField
-from wtforms.validators import DataRequired, AnyOf, URL
+from wtforms.validators import DataRequired, AnyOf, URL, ValidationError, Optional
 
-class ShowForm(Form):
+class TemplateForm(Form):
+    class Meta:
+        csrf=False
+
+
+class ShowForm(TemplateForm):
+
     artist_id = StringField(
         'artist_id'
     )
     venue_id = StringField(
         'venue_id'
     )
-    #validate that show time is not in the past
     start_time = DateTimeField(
         'start_time',
         validators=[DataRequired()],
         default= datetime.today()
     )
 
-class VenueForm(Form):
+    def validate_start_time(form, field):
+        if(form.start_time.data < datetime.today()):
+            raise ValidationError('Date cannot be in the past')
+
+    
+
+class VenueForm(TemplateForm):
     name = StringField(
         'name', validators=[DataRequired()]
     )
@@ -25,7 +36,9 @@ class VenueForm(Form):
         'city'
     )
     state = SelectField(
-        'state',
+        'state', validators=[AnyOf(values=['AL','AK','AZ','AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL','GA', 'HI','ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MT', 
+            'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 
+            'WA', 'WV', 'WI', 'WY'], message='Please select from the available list of values')],
         choices=[
             ('AL', 'AL'),
             ('AK', 'AK'),
@@ -90,8 +103,7 @@ class VenueForm(Form):
         'image_link'
     )
     genres = SelectMultipleField(
-        # TODO implement enum restriction
-        'genres',
+        'genres', validators=[Optional()],
         choices=[
             ('Alternative', 'Alternative'),
             ('Blues', 'Blues'),
@@ -115,10 +127,10 @@ class VenueForm(Form):
         ]
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Optional()]
     )
     website = StringField(
-        'website', validators=[URL()]
+        'website', validators=[URL(), Optional()]
     )
     seeking_talent = BooleanField(
         'seeking_talent', default=False
@@ -127,15 +139,25 @@ class VenueForm(Form):
         'seeking_description'
     )
 
-class ArtistForm(Form):
+    #tried using the AnyOf built-in validator, but since selectmultiplefields returns a list instead of a value, the validator was always throwing an error
+    def validate_genres(form, field):
+        acceptable_input = ['Alternative','Blues', 'Classical', 'Country', 'Electronic', 'Folk', 'Funk', 'Hip-Hop', 'Heavy Metal', 'Instrumental','Jazz', 
+        'Musical Theatre', 'Pop', 'Punk', 'R&B', 'Reggae', 'Rock n Roll', 'Soul', 'Other']
+        for genre in form.genres.data:
+            if (genre not in acceptable_input):
+                raise ValidationError('Please select from the available list of values')
+
+class ArtistForm(TemplateForm):
     name = StringField(
         'name', validators=[DataRequired()]
     )
     city = StringField(
-        'city', validators=[DataRequired()]
+        'city'
     )
     state = SelectField(
-        'state', validators=[DataRequired()],
+        'state', validators=[AnyOf(values=['AL','AK','AZ','AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL','GA', 'HI','ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MT', 
+            'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 
+            'WA', 'WV', 'WI', 'WY'], message='Please select from the available list of values')],
         choices=[
             ('AL', 'AL'),
             ('AK', 'AK'),
@@ -191,15 +213,13 @@ class ArtistForm(Form):
         ]
     )
     phone = StringField(
-        # TODO implement validation logic for state
         'phone'
     )
     image_link = StringField(
         'image_link'
     )
     genres = SelectMultipleField(
-        # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
+        'genres', validators=[Optional()],
         choices=[
             ('Alternative', 'Alternative'),
             ('Blues', 'Blues'),
@@ -223,11 +243,10 @@ class ArtistForm(Form):
         ]
     )
     facebook_link = StringField(
-        # TODO implement enum restriction
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Optional()]
     )
     website = StringField(
-        'website', validators=[URL()]
+        'website', validators=[URL(), Optional()]
     )
     seeking_venue = BooleanField(
         'seeking_venue', default=False
@@ -236,4 +255,11 @@ class ArtistForm(Form):
         'seeking_description'
     )
 
-# TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
+    #tried using the AnyOf built-in validator, but since selectmultiplefields returns a list instead of a value, the validator was always throwing an error
+    def validate_genres(form, field):
+        acceptable_input = ['Alternative','Blues', 'Classical', 'Country', 'Electronic', 'Folk', 'Funk', 'Hip-Hop', 'Heavy Metal', 'Instrumental','Jazz', 
+        'Musical Theatre', 'Pop', 'Punk', 'R&B', 'Reggae', 'Rock n Roll', 'Soul', 'Other']
+        for genre in form.genres.data:
+            if (genre not in acceptable_input):
+                raise ValidationError('Please select from the available list of values')
+

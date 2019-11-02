@@ -7,7 +7,7 @@ import datetime
 import sys
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -32,13 +32,13 @@ migrate = Migrate(app, db)
 
 #add constraints for fields
 artist_genre = db.Table('Artist_Genre',
-  db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), nullable=False),
-  db.Column('genre_id', db.Integer, db.ForeignKey('Genre.id'), nullable=False)
+  db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id', ondelete="CASCADE")),
+  db.Column('genre_id', db.Integer, db.ForeignKey('Genre.id', ondelete="CASCADE"))
   )
 
 venue_genre = db.Table('Venue_Genre',
-  db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), nullable=False),
-  db.Column('genre_id', db.Integer, db.ForeignKey('Genre.id'), nullable=False)
+  db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id', ondelete="CASCADE")),
+  db.Column('genre_id', db.Integer, db.ForeignKey('Genre.id', ondelete="CASCADE"))
   )
 
 class Show(db.Model):
@@ -47,8 +47,8 @@ class Show(db.Model):
   #need the id field in order to be able to uniquely identify rows in case the same artist plays the same venue multiple times
   #initially used the artist_id and the venue_id as the primary keys, however those can have duplicates
   id = db.Column(db.Integer, primary_key=True)
-  artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'))
-  venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'))
+  artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id', ondelete="CASCADE"))
+  venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id', ondelete="CASCADE"))
   start_time = db.Column(db.DateTime, nullable=False)
   artist = db.relationship('Artist', backref=db.backref('artist_show', lazy=True))
   venue = db.relationship('Venue', backref=db.backref('venue_show', lazy=True))
@@ -61,15 +61,15 @@ class Venue(db.Model):
   __tablename__ = 'Venue'
 
   id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String)
-  city = db.Column(db.Integer, db.ForeignKey('City.id'))
+  name = db.Column(db.String, nullable=False)
+  city = db.Column(db.Integer, db.ForeignKey('City.id', ondelete="SET NULL"))
   address = db.Column(db.String(120))
   phone = db.Column(db.String(120))
   genres = db.relationship('Genre', secondary=venue_genre, backref=db.backref('venues', lazy=True))
   image_link = db.Column(db.String(500))
   facebook_link = db.Column(db.String(120))
   website = db.Column(db.String())
-  seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
+  seeking_talent = db.Column(db.Boolean, default=False)
   seeking_description = db.Column(db.String())
   show = db.relationship('Show', backref=db.backref('venues', lazy=True))
 
@@ -81,14 +81,14 @@ class Artist(db.Model):
   __tablename__ = 'Artist'
 
   id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String)
-  city = db.Column(db.Integer, db.ForeignKey('City.id'))
+  name = db.Column(db.String, nullable=False)
+  city = db.Column(db.Integer, db.ForeignKey('City.id', ondelete="SET NULL"))
   phone = db.Column(db.String(120))
   genres = db.relationship('Genre', secondary=artist_genre, backref=db.backref('artists', lazy=True))
   image_link = db.Column(db.String(500))
   facebook_link = db.Column(db.String(120))
   website = db.Column(db.String())
-  seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
+  seeking_venue = db.Column(db.Boolean, default=False)
   seeking_description = db.Column(db.String())
   show = db.relationship('Show', backref=db.backref('artists', lazy=True))
 
@@ -101,8 +101,8 @@ class Genre(db.Model):
 
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String)
-  artist_genres = db.relationship('Artist', secondary=artist_genre, backref=db.backref('artist_genres', lazy=True))
-  venue_genres = db.relationship('Venue', secondary=venue_genre, backref=db.backref('venue_genres', lazy=True))
+  artist_genres = db.relationship('Artist', secondary=artist_genre)
+  venue_genres = db.relationship('Venue', secondary=venue_genre)
 
   def __repr__(self):
     return f'<Genre {self.id}, {self.name}>'
@@ -246,7 +246,8 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
-  form = VenueForm()
+  print('in create venue backend')
+  form = VenueForm(request.form)
   error = False
 
   # print(request.form)
@@ -258,53 +259,59 @@ def create_venue_submission():
 
   try:
     #print(request.form['seeking_talent'])
-    want_talent = request.form.get('seeking_talent', False)
-    if(want_talent == 'y'):
-      want_talent = True
-    
-    new_venue = Venue(
-      name = request.form['name'],
-      address=request.form['address'],
-      phone=request.form['phone'],
-      image_link=request.form['image_link'],
-      facebook_link=request.form['facebook_link'],
-      website=request.form['website'],
-      seeking_talent=want_talent,
-      seeking_description=request.form['seeking_description'])
+    if(form.validate()):
+      want_talent = request.form.get('seeking_talent', False)
+      if(want_talent == 'y'):
+        want_talent = True
+      
+      new_venue = Venue(
+        name = request.form['name'],
+        address=request.form['address'],
+        phone=request.form['phone'],
+        image_link=request.form['image_link'],
+        facebook_link=request.form['facebook_link'],
+        website=request.form['website'],
+        seeking_talent=want_talent,
+        seeking_description=request.form['seeking_description'])
 
-    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+      venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
 
-    if(len(venue_city) == 0):
-      new_city = City(city=request.form['city'], state=request.form['state'])
-      db.session.add(new_city)
-      db.session.commit()
-      new_venue.city = new_city.id
-    else:
-      new_venue.city = venue_city[0].id
-
-    venue_genres_input = form.genres.data
-    genre_list = []
-
-    #find a better way to do this since it's horrible
-    for genre_input in venue_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).all()
-      if(len(db_value) == 0):
-        new_genre = Genre(name=genre_input)
-        db.session.add(new_genre)
+      if(len(venue_city) == 0):
+        new_city = City(city=request.form['city'], state=request.form['state'])
+        db.session.add(new_city)
         db.session.commit()
-        genre_list.append(new_genre)
-        # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
-        # db.session.add(new_venue_genre)
-        # db.session.commit()
+        new_venue.city = new_city.id
       else:
-        genre_list.append(db_value[0])
-        # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
-        # db.session.add(new_venue_genre)
-        # db.session.commit()
+        new_venue.city = venue_city[0].id
 
-    new_venue.genres = genre_list
-    db.session.add(new_venue)
-    db.session.commit()
+      venue_genres_input = form.genres.data
+      genre_list = []
+
+      #find a better way to do this since it's horrible
+      for genre_input in venue_genres_input:
+        db_value = Genre.query.filter_by(name=genre_input).all()
+        if(len(db_value) == 0):
+          new_genre = Genre(name=genre_input)
+          db.session.add(new_genre)
+          db.session.commit()
+          genre_list.append(new_genre)
+          # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
+          # db.session.add(new_venue_genre)
+          # db.session.commit()
+        else:
+          genre_list.append(db_value[0])
+          # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
+          # db.session.add(new_venue_genre)
+          # db.session.commit()
+
+      new_venue.genres = genre_list
+      db.session.add(new_venue)
+      db.session.commit()
+    else:
+      print(form.errors)
+      print(form.genres.data)
+      print(form.state.data)
+      error=True
   except:
     db.session.rollback()
     error = True
@@ -312,7 +319,12 @@ def create_venue_submission():
   finally:
     db.session.close()
   if error:
-    flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
+    if(form.errors):
+      flash('We could not post venue '+ request.form['name'] +' because: ')
+      for field, error in form.errors.items():
+        flash(field+': '+error[0])
+    else:
+      flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
   else:
     flash('Venue ' + request.form['name'] + ' was successfully listed!')
 
@@ -325,15 +337,34 @@ def create_venue_submission():
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
   return render_template('pages/home.html')
 
+
 #TODO*******************************
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
 
+  error = False
+
+  try:
+    to_delete = db.session.query(Venue).filter(Venue.id==venue_id).first()
+    db.session.delete(to_delete)
+    #Venue.query.filter_by(id=venue_id).delete()
+    db.session.commit()
+  except:
+    db.session.rollback()
+    error = True
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+  if error:
+    return jsonify({ 'success': False })
+  else:
+    return jsonify({ 'success': True })
+  
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+
 
 #  Artists
 #  ----------------------------------------------------------------
@@ -474,79 +505,67 @@ def edit_venue_submission(venue_id):
   # TODO: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
 
-  print('starting to update venue')
-
-  form = VenueForm()
+  form = VenueForm(request.form)
   to_update = Venue.query.get(venue_id)
+  error = False
 
-  print('retrieved form and venue record')
-  #try:
-    #print(request.form['seeking_talent'])
-  want_talent = request.form.get('seeking_talent', False)
-  if(want_talent == 'y'):
-    want_talent = True
-  
-  print('processed seeking_talent field')
-  print(want_talent)
-  print(to_update.seeking_talent)
+  try:
+    
+    #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
+    #so setting up False as default if nothing is found in the request
+    #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
+    want_talent = request.form.get('seeking_talent', False)
+    if(want_talent == 'y'):
+      want_talent = True
 
-  #TODO: implement functionality with seeking talent field
-  to_update.name = request.form['name'],
-  to_update.address=request.form['address'],
-  to_update.phone=request.form['phone'],
-  to_update.image_link=request.form['image_link'],
-  to_update.facebook_link=request.form['facebook_link'],
-  to_update.website=request.form['website'],
-  #to_update.seeking_talent=False,
-  to_update.seeking_description=request.form['seeking_description']
+    to_update.name = request.form['name']
+    to_update.address=request.form['address']
+    to_update.phone=request.form['phone']
+    to_update.image_link=request.form['image_link']
+    to_update.facebook_link=request.form['facebook_link']
+    to_update.website=request.form['website']
+    to_update.seeking_talent=want_talent
+    to_update.seeking_description=request.form['seeking_description']
 
-  venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
 
-  if(len(venue_city) == 0):
-    new_city = City(city=request.form['city'], state=request.form['state'])
-    db.session.add(new_city)
-    db.session.commit()
-    to_update.city = new_city.id
-  else:
-    to_update.city = venue_city[0].id
 
-  venue_genres_input = form.genres.data
-  genre_list = []
-
-  #find a better way to do this since it's horrible
-  for genre_input in venue_genres_input:
-    db_value = Genre.query.filter_by(name=genre_input).all()
-    if(len(db_value) == 0):
-      new_genre = Genre(name=genre_input)
-      db.session.add(new_genre)
+    if(len(venue_city) == 0):
+      new_city = City(city=request.form['city'], state=request.form['state'])
+      db.session.add(new_city)
       db.session.commit()
-      genre_list.append(new_genre)
-      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=new_genre.id)
-      # db.session.add(new_venue_genre)
-      # db.session.commit()
+      to_update.city = new_city.id
     else:
-      genre_list.append(db_value[0])
-      # new_venue_genre = venue_genre(venue_id=new_venue.id, genre_id=db_value[0].id)
-      # db.session.add(new_venue_genre)
-      # db.session.commit()
+      to_update.city = venue_city[0].id
 
-  to_update.genres = genre_list
-  print('finished updating venue fields')
-  print(to_update)
+    venue_genres_input = form.genres.data
+    genre_list = []
 
-  db.session.add(to_update)
-  db.session.commit()
-  print('new venue values commited to database')
-  # except:
-  #   db.session.rollback()
-  #   error = True
-  #   print(sys.exc_info())
-  # finally:
-  #   db.session.close()
-  # if error:
-  #   flash('An error occurred. Venue ' + request.form['name'] + ' could not be updated.')
-  # else:
-  #   flash('Venue ' + request.form['name'] + ' was successfully updated!')
+    #find a better way to do this since it's horrible
+    for genre_input in venue_genres_input:
+      db_value = Genre.query.filter_by(name=genre_input).all()
+      if(len(db_value) == 0):
+        new_genre = Genre(name=genre_input)
+        db.session.add(new_genre)
+        db.session.commit()
+        genre_list.append(new_genre)
+      else:
+        genre_list.append(db_value[0])
+
+    to_update.genres = genre_list
+
+    db.session.add(to_update)
+    db.session.commit()
+  except:
+    db.session.rollback()
+    error = True
+    print(sys.exc_info())
+  finally:
+    db.session.close()
+  if error:
+    flash('An error occurred. Venue ' + request.form['name'] + ' could not be updated.')
+  else:
+    flash('Venue ' + request.form['name'] + ' was successfully updated!')
 
   return redirect(url_for('show_venue', venue_id=venue_id))
 
@@ -566,7 +585,7 @@ def create_artist_submission():
   # TODO: modify data to be the data object returned from db insertion
   #A user cannot submit an invalid form submission (e.g. using an invalid State enum, or with required fields missing; missing city, missing name, or missing genre is not required
 
-  form = ArtistForm()
+  form = ArtistForm(request.form)
   error = False
 
   # print(request.form)
@@ -578,49 +597,52 @@ def create_artist_submission():
 
   try:
     #print(request.form['seeking_venue'])
-    want_venue = request.form.get('seeking_venue', False)
-    if(want_venue == 'y'):
-      want_venue = True
-    
-    new_artist = Artist(
-      name = request.form['name'],
-      phone=request.form['phone'],
-      image_link=request.form['image_link'],
-      facebook_link=request.form['facebook_link'],
-      website=request.form['website'],
-      seeking_venue=want_venue,
-      seeking_description=request.form['seeking_description'])
+    if(form.validate()):
+      want_venue = request.form.get('seeking_venue', False)
+      if(want_venue == 'y'):
+        want_venue = True
+      
+      new_artist = Artist(
+        name = request.form['name'],
+        phone=request.form['phone'],
+        image_link=request.form['image_link'],
+        facebook_link=request.form['facebook_link'],
+        website=request.form['website'],
+        seeking_venue=want_venue,
+        seeking_description=request.form['seeking_description'])
 
-    #test whether this works for cities with same name but different states
-    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
+      #test whether this works for cities with same name but different states
+      artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).all()
 
-    #check if query returns more than one result
-    if(len(artist_city) == 0):
-      new_city = City(city=request.form['city'], state=request.form['state'])
-      db.session.add(new_city)
-      db.session.commit()
-      new_artist.city = new_city.id
-    else:
-      new_artist.city = artist_city[0].id
-
-    artist_genres_input = form.genres.data
-    genre_list = []
-
-    #find a better way to do this since it's horrible
-    for genre_input in artist_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).all()
-      if(len(db_value) == 0):
-        new_genre = Genre(name=genre_input)
-        db.session.add(new_genre)
+      #check if query returns more than one result
+      if(len(artist_city) == 0):
+        new_city = City(city=request.form['city'], state=request.form['state'])
+        db.session.add(new_city)
         db.session.commit()
-        genre_list.append(new_genre)
+        new_artist.city = new_city.id
       else:
-        #check if there is more than one result??
-        genre_list.append(db_value[0])
+        new_artist.city = artist_city[0].id
 
-    new_artist.genres = genre_list
-    db.session.add(new_artist)
-    db.session.commit()
+      artist_genres_input = form.genres.data
+      genre_list = []
+
+      #find a better way to do this since it's horrible
+      for genre_input in artist_genres_input:
+        db_value = Genre.query.filter_by(name=genre_input).all()
+        if(len(db_value) == 0):
+          new_genre = Genre(name=genre_input)
+          db.session.add(new_genre)
+          db.session.commit()
+          genre_list.append(new_genre)
+        else:
+          #check if there is more than one result??
+          genre_list.append(db_value[0])
+
+      new_artist.genres = genre_list
+      db.session.add(new_artist)
+      db.session.commit()
+    else:
+      error=True
   except:
     db.session.rollback()
     error = True
@@ -628,7 +650,12 @@ def create_artist_submission():
   finally:
     db.session.close()
   if error:
-    flash('An error occurred. Artist ' + request.form['name'] + ' could not be listed.')
+    if(form.errors):
+      flash('We could not post artist '+ request.form['name'] +' because: ')
+      for field, error in form.errors.items():
+        flash(field+': '+error[0])
+    else:
+      flash('An error occurred. Artist ' + request.form['name'] + ' could not be listed.')
   else:
     flash('Artist ' + request.form['name'] + ' was successfully listed!')
 
@@ -671,18 +698,21 @@ def create_show_submission():
   # called to create new shows in the db, upon submitting new show listing form
   # TODO: insert form data as a new Show record in the db, instead
 
-  form = ShowForm()
+  form = ShowForm(request.form)
   error = False
 
   try:
-    new_show = Show(
-      artist_id=request.form['artist_id'],
-      venue_id=request.form['venue_id'],
-      start_time=request.form['start_time']
-      )
+    if(form.validate()):
+      new_show = Show(
+        artist_id=request.form['artist_id'],
+        venue_id=request.form['venue_id'],
+        start_time=request.form['start_time']
+        )
+      db.session.add(new_show)
+      db.session.commit()
+    else:
+      error=True
 
-    db.session.add(new_show)
-    db.session.commit()
   except:
     db.session.rollback()
     error = True
@@ -690,7 +720,12 @@ def create_show_submission():
   finally:
     db.session.close()
   if error:
-    flash('An error occurred. Show could not be listed.')
+    if(form.errors):
+      flash('We could not post your show because: ')
+      for field, error in form.errors.items():
+        flash(field+': '+error[0])
+    else:
+      flash('An error occurred. Show could not be listed.')
   else:
     flash('Show was successfully listed!')
 

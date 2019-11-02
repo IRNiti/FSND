@@ -6,6 +6,7 @@
 		<h1 class="monospace">
 			{{ venue.name }}
 		</h1>
+		<button onclick="deleteVenue({{venue.id}})">Delete Venue</button>
 		<p class="subtitle">
 			ID: {{ venue.id }}
 		</p>
@@ -74,6 +75,7 @@
 		{% endfor %}
 	</div>
 </section>
+<script type="text/javascript" src="/static/js/handleForm.js" defer></script>
 
 {% endblock %}
 
