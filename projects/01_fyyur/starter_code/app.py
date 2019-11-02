@@ -57,8 +57,8 @@ def index():
 
 @app.route('/venues')
 def venues():
-  cities = City.query.all()
-  venues = db.session.query(Venue, func.count(Show.id)).join(Show, isouter=True).group_by(Venue.id)
+  cities = City.query.order_by(City.state)
+  venues = db.session.query(Venue, func.count(Show.id)).join(Show, isouter=True).group_by(Venue.id).order_by(Venue.name)
   real_data = []
 
   
@@ -275,7 +275,7 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
   
-  return render_template('pages/artists.html', artists=Artist.query.all())
+  return render_template('pages/artists.html', artists=Artist.query.order_by(Artist.name))
 
 
 @app.route('/artists/search', methods=['POST'])
@@ -641,10 +641,10 @@ def create_artist_submission():
 @app.route('/shows')
 def shows():
   real_data = []
-  q = db.session.query(Venue, Show, Artist).filter((Show.venue_id == Venue.id) & (Show.artist_id == Artist.id)).all()
+  db_shows = db.session.query(Venue, Show, Artist).filter((Show.venue_id == Venue.id) & (Show.artist_id == Artist.id)).order_by(Show.start_time)
 
   #should we still display shows that have passed?
-  for show in q:
+  for show in db_shows:
     entry = {}
     entry["venue_id"] = show[0].id
     entry["artist_id"] = show[2].id
