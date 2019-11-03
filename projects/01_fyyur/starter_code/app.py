@@ -44,6 +44,80 @@ def format_datetime(value, format='medium'):
 app.jinja_env.filters['datetime'] = format_datetime
 
 #----------------------------------------------------------------------------#
+# Helpers.
+#----------------------------------------------------------------------------#
+
+def populate_object(form, input_object, operation):
+  error = False
+  errorMessage = ''
+  objectName = ''
+
+  try:
+    if(form.validate()):
+
+      input_object.name = form.name.data
+      input_object.phone=form.phone.data
+      input_object.image_link=form.image_link.data
+      input_object.facebook_link=form.facebook_link.data
+      input_object.website=form.website.data
+      input_object.seeking_description=form.seeking_description.data
+
+      if(input_object.__tablename__ == 'Venue'):
+        objectName = 'venue'
+        input_object.address=form.address.data
+        input_object.seeking_talent=form.seeking_talent.data
+      if(input_object.__tablename__ == 'Artist'):
+        objectName = 'artist'
+        input_object.seeking_venue=form.seeking_venue.data
+
+      object_city = City.query.filter_by(city=form.city.data, state=form.state.data).first()
+
+      if object_city is None:
+        new_city = City(city=form.city.data, state=form.state.data)
+        db.session.add(new_city)
+        db.session.commit()
+        input_object.city = new_city.id
+      else:
+        input_object.city = object_city.id
+
+      object_genres_input = form.genres.data
+      genre_list = []
+
+      for genre_input in object_genres_input:
+        db_value = Genre.query.filter_by(name=genre_input).first()
+        if db_value is None:
+          new_genre = Genre(name=genre_input)
+          db.session.add(new_genre)
+          db.session.commit()
+          genre_list.append(new_genre)
+        else:
+          genre_list.append(db_value)
+
+      input_object.genres = genre_list
+      db.session.add(input_object)
+      db.session.commit()
+    else:
+      error=True
+  except:
+    db.session.rollback()
+    error = True
+    errorMessage = sys.exc_info()
+  finally:
+    db.session.close()
+  if error:
+    if(form.errors):
+      flash('Unfortunately '+objectName+' '+ request.form['name'] +' could not be '+operation+' because: ')
+      for field, error in form.errors.items():
+        flash(field+': '+error[0])
+    else:
+      if('violates unique constraint' in str(errorMessage[1])):
+        flash('A '+objectName+' with the same name already exists. Please enter another name')
+      else:
+        flash('An error occurred and '+objectName+' '+ request.form['name'] + ' could not be '+operation+'.')
+  else:
+    flash('Yey ' + objectName + ' ' + request.form['name'] + ' was successfully '+operation+'!')
+
+#----------------------------------------------------------------------------#
 # Controllers.
 #----------------------------------------------------------------------------#
 
@@ -148,76 +222,9 @@ def create_venue_form():
 def create_venue_submission():
   
   form = VenueForm(request.form)
-  error = False
-  errorMessage = ''
-
-  try:
-    if(form.validate()):
-
-      #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
-      #so setting up False as default if nothing is found in the request
-      #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
-      want_talent = request.form.get('seeking_talent', False)
-      if(want_talent == 'y'):
-        want_talent = True
-      
-      new_venue = Venue(
-        name = request.form['name'],
-        address=request.form['address'],
-        phone=request.form['phone'],
-        image_link=request.form['image_link'],
-        facebook_link=request.form['facebook_link'],
-        website=request.form['website'],
-        seeking_talent=want_talent,
-        seeking_description=request.form['seeking_description'])
-
-      venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
-
-      if venue_city is None:
-        new_city = City(city=request.form['city'], state=request.form['state'])
-        db.session.add(new_city)
-        db.session.commit()
-        new_venue.city = new_city.id
-      else:
-        new_venue.city = venue_city.id
-
-      venue_genres_input = form.genres.data
-      genre_list = []
-
-      for genre_input in venue_genres_input:
-        db_value = Genre.query.filter_by(name=genre_input).first()
-        if db_value is None:
-          new_genre = Genre(name=genre_input)
-          db.session.add(new_genre)
-          db.session.commit()
-          genre_list.append(new_genre)
-        else:
-          genre_list.append(db_value)
-
-      new_venue.genres = genre_list
-      db.session.add(new_venue)
-      db.session.commit()
-    else:
-      error=True
-  except:
-    db.session.rollback()
-    error = True
-    errorMessage = sys.exc_info()
-  finally:
-    db.session.close()
-  if error:
-    if(form.errors):
-      flash('We could not post venue '+ request.form['name'] +' because: ')
-      for field, error in form.errors.items():
-        flash(field+': '+error[0])
-    else:
-      if('violates unique constraint' in str(errorMessage[1])):
-        flash('A venue with the same name already exists. Please enter another name')
-      else:
-        flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
-  else:
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
-
+  new_venue = Venue()
+  populate_object(form, new_venue, 'posted')
+  
   return render_template('pages/home.html')
 
 
@@ -340,62 +347,7 @@ def edit_artist_submission(artist_id):
 
   form = ArtistForm(request.form)
   to_update = Artist.query.get(artist_id)
-  error = False
-
-  try:
-    
-    #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
-    #so setting up False as default if nothing is found in the request
-    #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
-    want_venue = request.form.get('seeking_venue', False)
-    if(want_venue == 'y'):
-      want_venue = True
-
-    to_update.name = request.form['name']
-    to_update.phone=request.form['phone']
-    to_update.image_link=request.form['image_link']
-    to_update.facebook_link=request.form['facebook_link']
-    to_update.website=request.form['website']
-    to_update.seeking_venue=want_venue
-    to_update.seeking_description=request.form['seeking_description']
-
-    artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
-
-    if artist_city is None:
-      new_city = City(city=request.form['city'], state=request.form['state'])
-      db.session.add(new_city)
-      db.session.commit()
-      to_update.city = new_city.id
-    else:
-      to_update.city = artist_city.id
-
-    artist_genres_input = form.genres.data
-    genre_list = []
-
-    for genre_input in artist_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).first()
-      if db_value is None:
-        new_genre = Genre(name=genre_input)
-        db.session.add(new_genre)
-        db.session.commit()
-        genre_list.append(new_genre)
-      else:
-        genre_list.append(db_value)
-
-    to_update.genres = genre_list
-
-    db.session.add(to_update)
-    db.session.commit()
-  except:
-    db.session.rollback()
-    error = True
-    print(sys.exc_info())
-  finally:
-    db.session.close()
-  if error:
-    flash('An error occurred. Artist ' + request.form['name'] + ' could not be updated.')
-  else:
-    flash('Artist ' + request.form['name'] + ' was successfully updated!')
+  populate_object(form, to_update, 'updated')
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
@@ -430,64 +382,7 @@ def edit_venue_submission(venue_id):
 
   form = VenueForm(request.form)
   to_update = Venue.query.get(venue_id)
-  error = False
-
-  try:
-    
-    #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
-    #so setting up False as default if nothing is found in the request
-    #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
-    want_talent = request.form.get('seeking_talent', False)
-    if(want_talent == 'y'):
-      want_talent = True
-
-    to_update.name = request.form['name']
-    to_update.address=request.form['address']
-    to_update.phone=request.form['phone']
-    to_update.image_link=request.form['image_link']
-    to_update.facebook_link=request.form['facebook_link']
-    to_update.website=request.form['website']
-    to_update.seeking_talent=want_talent
-    to_update.seeking_description=request.form['seeking_description']
-
-    venue_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
-
-
-    if venue_city is None:
-      new_city = City(city=request.form['city'], state=request.form['state'])
-      db.session.add(new_city)
-      db.session.commit()
-      to_update.city = new_city.id
-    else:
-      to_update.city = venue_city.id
-
-    venue_genres_input = form.genres.data
-    genre_list = []
-
-    for genre_input in venue_genres_input:
-      db_value = Genre.query.filter_by(name=genre_input).first()
-      if db_value is None:
-        new_genre = Genre(name=genre_input)
-        db.session.add(new_genre)
-        db.session.commit()
-        genre_list.append(new_genre)
-      else:
-        genre_list.append(db_value)
-
-    to_update.genres = genre_list
-
-    db.session.add(to_update)
-    db.session.commit()
-  except:
-    db.session.rollback()
-    error = True
-    print(sys.exc_info())
-  finally:
-    db.session.close()
-  if error:
-    flash('An error occurred. Venue ' + request.form['name'] + ' could not be updated.')
-  else:
-    flash('Venue ' + request.form['name'] + ' was successfully updated!')
+  populate_object(form, to_update, 'updated')
 
   return redirect(url_for('show_venue', venue_id=venue_id))
 
@@ -504,75 +399,8 @@ def create_artist_form():
 def create_artist_submission():
   
   form = ArtistForm(request.form)
-  error = False
-  errorMessage = ''
-
-  try:
-    if(form.validate()):
-
-      #if the user leaves the checkbox unchecked, then nothing is getting sent in the request for seeking_talent
-      #so setting up False as default if nothing is found in the request
-      #if the checkbox is checked, the form sends a value of 'y' which is not a boolean so converting that to True
-      want_venue = request.form.get('seeking_venue', False)
-      if(want_venue == 'y'):
-        want_venue = True
-      
-      new_artist = Artist(
-        name = request.form['name'],
-        phone=request.form['phone'],
-        image_link=request.form['image_link'],
-        facebook_link=request.form['facebook_link'],
-        website=request.form['website'],
-        seeking_venue=want_venue,
-        seeking_description=request.form['seeking_description'])
-
-      artist_city = City.query.filter_by(city=request.form['city'], state=request.form['state']).first()
-
-      if artist_city is None:
-        new_city = City(city=request.form['city'], state=request.form['state'])
-        db.session.add(new_city)
-        db.session.commit()
-        new_artist.city = new_city.id
-      else:
-        new_artist.city = artist_city.id
-
-      artist_genres_input = form.genres.data
-      genre_list = []
-
-      for genre_input in artist_genres_input:
-        db_value = Genre.query.filter_by(name=genre_input).first()
-        if db_value is None:
-          new_genre = Genre(name=genre_input)
-          db.session.add(new_genre)
-          db.session.commit()
-          genre_list.append(new_genre)
-        else:
-          genre_list.append(db_value)
-
-      new_artist.genres = genre_list
-      db.session.add(new_artist)
-      db.session.commit()
-    else:
-      error=True
-  except:
-    db.session.rollback()
-    error = True
-    errorMessage = sys.exc_info()
-    print(errorMessage)
-  finally:
-    db.session.close()
-  if error:
-    if(form.errors):
-      flash('We could not post artist '+ request.form['name'] +' because: ')
-      for field, error in form.errors.items():
-        flash(field+': '+error[0])
-    else:
-      if('violates unique constraint' in str(errorMessage[1])):
-        flash('An artist with the same name already exists. Please enter another name')
-      else:
-        flash('An error occurred. Artist ' + request.form['name'] + ' could not be listed.')
-  else:
-    flash('Artist ' + request.form['name'] + ' was successfully listed!')
+  new_artist = Artist()
+  populate_object(form, new_artist, 'posted')
 
   return render_template('pages/home.html')
 
