@@ -156,6 +156,9 @@ def create_app(test_config=None):
       difficulty = body.get('difficulty', None)
       category = body.get('category', None)
 
+      if(answer == '' or question == ''):
+        abort(422)
+
       try:
         new_question = Question(question=question, answer=answer, category=category, difficulty=difficulty)
         new_question.insert()

@@ -89,6 +89,11 @@ class TriviaTestCase(unittest.TestCase):
         inserted_question = Question.query.filter_by(question=new_question).first()
         self.assertEqual(data['question_id'], inserted_question.id)
 
+    def test_create_question_without_answer(self):
+        new_question = 'Test Question'+str(datetime.datetime.now())
+        res = self.client().post('/questions', json={'question': new_question, 'answer': '', 'difficulty': 4, 'category': 1})
+        self.assertEqual(res.status_code, 422)
+
     def test_succesful_search_question(self):
         search_term = 'test'
         res = self.client().post('/questions', json={'searchTerm': search_term})
