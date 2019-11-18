@@ -88,10 +88,14 @@ def create_app(test_config=None):
   @app.route('/categories')
   def get_categories():
     categories = Category.query.all()
+    formatted_categories = {}
+
+    for category in categories:
+      formatted_categories[category.id] = category.type
 
     return jsonify({
       'success': True,
-      'categories': [category.format() for category in categories]
+      'categories': formatted_categories
       })
 
   @app.route('/categories/<int:category_id>/questions')
@@ -162,6 +166,32 @@ def create_app(test_config=None):
           })
       except:
         abort(422)
+
+
+  @app.route('/quizzes', methods=['POST'])
+  def get_quiz_question():
+    try:
+      body = request.get_json()
+      previous_questions = body.get('previous_questions', None)
+      category = body.get('quiz_category', None)
+      next_question = None
+      print(category)
+
+      if (category['id'] == 0 ):
+        next_question = Question.query.filter(~Question.id.in_(previous_questions)).first()
+      else:
+        next_question = Question.query.filter_by(category=category['id']).filter(~Question.id.in_(previous_questions)).first()
+      if next_question is not None:
+        next_question = next_question.format()
+
+      return jsonify({
+        'success': True,
+        'question': next_question
+        })
+    except:
+      abort(422)
+
+
 
   '''
   @TODO: 

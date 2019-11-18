@@ -101,6 +101,29 @@ class TriviaTestCase(unittest.TestCase):
 
     #TODO write failed test for search question
 
+    def test_succesful_return_quiz_question(self):
+        category = Category.query.first()
+        input_category = {
+            'type': category.type,
+            'id': category.id
+        }
+        questions = Question.query.filter_by(category=category.id).all()
+        previous_questions = [question.id for question in questions[1:]]
+        res = self.client().post('/quizzes', json={'previous_questions': previous_questions, 'quiz_category': input_category})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['question'])
+        self.assertEqual(data['question'], questions[0].format())
+
+    def test_failed_return_quiz_question(self):
+        category = Category.query.first()
+        input_category = category.id
+        questions = Question.query.filter_by(category=category.id).all()
+        previous_questions = [question.id for question in questions[1:]]
+        res = self.client().post('/quizzes', json={'previous_questions': previous_questions, 'quiz_category': input_category})
+        self.assertEqual(res.status_code, 422)
+
 
     #TODO write error test for create question
 
