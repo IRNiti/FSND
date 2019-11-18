@@ -128,6 +128,7 @@ def create_app(test_config=None):
     search_term = body.get('searchTerm', None)
 
     if search_term is not None:
+      search_term = '%'+search_term+'%'
       questions = Question.query.filter(Question.question.ilike(search_term)).all()
       formatted_questions = paginate_questions(request, questions)
       current_category = None
