@@ -61,15 +61,17 @@ def create_app(test_config=None):
       return formatted_questions
 
 
-  # TODO: figure out current category
   @app.route('/questions')
   def get_questions():
 
     questions = Question.query.all()
     categories = Category.query.all()
-    currentCategory = Category.query.get(1)
     formatted_questions = paginate_questions(request, questions)
     formatted_categories = {}
+    current_category = None
+
+    if (len(questions) > 0):
+      current_category = Category.query.get(questions[0].category).format()
 
     for category in categories:
       formatted_categories[category.id] = category.type
@@ -79,7 +81,7 @@ def create_app(test_config=None):
       'questions': formatted_questions,
       'total_questions': len(questions),
       'categories': formatted_categories,
-      'currentCategory': currentCategory.format()
+      'currentCategory': current_category
       })
 
   #TODO: error handling for missing categories
@@ -121,6 +123,7 @@ def create_app(test_config=None):
         'success': True
         })
 
+  #TODO: error handling for search
   @app.route('/questions', methods=['POST'])
   def create_question():
     body = request.get_json()
