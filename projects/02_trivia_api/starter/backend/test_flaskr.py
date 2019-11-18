@@ -89,6 +89,19 @@ class TriviaTestCase(unittest.TestCase):
         inserted_question = Question.query.filter_by(question=new_question).first()
         self.assertEqual(data['question_id'], inserted_question.id)
 
+    def test_succesful_search_question(self):
+        search_term = 'test'
+        res = self.client().post('/questions', json={'searchTerm': search_term})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertTrue(data['totalQuestions'])
+        self.assertTrue(data['currentCategory'])
+
+    #TODO write failed test for search question
+
+
     #TODO write error test for create question
 
 

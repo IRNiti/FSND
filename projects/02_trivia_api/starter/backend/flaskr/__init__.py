@@ -61,7 +61,7 @@ def create_app(test_config=None):
       return formatted_questions
 
 
-  # TODO: still need to order questions by category and retrieve actual current category
+  # TODO: figure out current category
   @app.route('/questions')
   def get_questions():
 
@@ -72,13 +72,13 @@ def create_app(test_config=None):
     formatted_categories = {}
 
     for category in categories:
-      formatted_categories['id'] = category.id
+      formatted_categories[category.id] = category.type
 
     return jsonify({
       'success': True,
       'questions': formatted_questions,
       'total_questions': len(questions),
-      'categories': currentCategory.format(),
+      'categories': formatted_categories,
       'currentCategory': currentCategory.format()
       })
 
@@ -124,21 +124,40 @@ def create_app(test_config=None):
   @app.route('/questions', methods=['POST'])
   def create_question():
     body = request.get_json()
-    question = body.get('question', None)
-    answer = body.get('answer', None)
-    difficulty = body.get('difficulty', None)
-    category = body.get('category', None)
 
-    try:
-      new_question = Question(question=question, answer=answer, category=category, difficulty=difficulty)
-      new_question.insert()
+    search_term = body.get('searchTerm', None)
+
+    if search_term is not None:
+      questions = Question.query.filter(Question.question.ilike(search_term)).all()
+      formatted_questions = paginate_questions(request, questions)
+      current_category = None
+
+      if (len(questions) > 0):
+        current_category = Category.query.get(questions[0].category).format()
 
       return jsonify({
         'success': True,
-        'question_id': new_question.id
+        'questions': formatted_questions,
+        'totalQuestions': len(questions),
+        'currentCategory': current_category
         })
-    except:
-      abort(422)
+
+    else:
+      question = body.get('question', None)
+      answer = body.get('answer', None)
+      difficulty = body.get('difficulty', None)
+      category = body.get('category', None)
+
+      try:
+        new_question = Question(question=question, answer=answer, category=category, difficulty=difficulty)
+        new_question.insert()
+
+        return jsonify({
+          'success': True,
+          'question_id': new_question.id
+          })
+      except:
+        abort(422)
 
   '''
   @TODO: 
