@@ -98,6 +98,7 @@ def create_app(test_config=None):
       'categories': formatted_categories
       })
 
+  #in Github this is specified as POST request??
   @app.route('/categories/<int:category_id>/questions')
   def get_questions_by_category(category_id):
     category = Category.query.get(category_id)
@@ -157,7 +158,7 @@ def create_app(test_config=None):
       category = body.get('category', None)
 
       if(answer == '' or question == ''):
-        abort(422)
+        abort(400)
 
       try:
         new_question = Question(question=question, answer=answer, category=category, difficulty=difficulty)
@@ -178,7 +179,6 @@ def create_app(test_config=None):
       previous_questions = body.get('previous_questions', None)
       category = body.get('quiz_category', None)
       next_question = None
-      print(category)
 
       if (category['id'] == 0 ):
         next_question = Question.query.filter(~Question.id.in_(previous_questions)).first()
@@ -284,6 +284,14 @@ def create_app(test_config=None):
       'error': 405,
       'message': 'Method not allowed'
       }), 405
+
+  @app.errorhandler(500)
+  def method_not_allowed(error):
+    return jsonify({
+      'success': False,
+      'error': 500,
+      'message': 'Internal Server Error'
+      }), 500
   
   return app
 
