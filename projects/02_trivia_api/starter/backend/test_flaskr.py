@@ -47,38 +47,63 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_failed_get_questions_nonexistent_page(self):
         res = self.client().get('/questions?page=100')
+        data = json.loads(res.data)
         self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Not found')
 
     def test_succesful_get_categories(self):
         res = self.client().get('/categories')
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
         self.assertTrue(data['categories'])
 
-    #TODO: write failed test for get categories
-    def test_failed_get_categories(self):
-        res = self.client().get('/categories')
+    def test_get_categories_with_wrong_method(self):
+        res = self.client().post('/categories')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 405)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Method not allowed')
 
     def test_succesful_get_questions_by_category(self):
         res = self.client().get('/categories/1/questions')
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
         self.assertTrue(data['questions'])
         self.assertTrue(data['totalQuestions'])
         self.assertTrue(data['currentCategory'])
 
     def test_get_questions_by_category_nonexistent_category(self):
         res = self.client().get('/categories/100/questions')
+        data = json.loads(res.data)
         self.assertEqual(res.status_code, 422)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Could not process request')
+
+    def test_get_questions_by_category_nonexistent_page(self):
+        res = self.client().get('/categories/1/questions?page=10')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Not found')
 
     def test_succesful_delete_question(self):
         to_delete = Question.query.order_by(Question.id.desc()).first()
         res = self.client().delete('/questions/'+str(to_delete.id))
+        data = json.loads(res.data)
+        question = Question.query.filter_by(id=to_delete.id).one_or_none()
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(question, None)
 
     def test_delete_nonexistent_question(self):
         res = self.client().delete('/questions/100')
+        data = json.loads(res.data)
         self.assertEqual(res.status_code, 422)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Could not process request')
 
     def test_succesful_create_question(self):
         new_question = 'Test Question'+str(datetime.datetime.now())
@@ -92,19 +117,41 @@ class TriviaTestCase(unittest.TestCase):
     def test_create_question_without_answer(self):
         new_question = 'Test Question'+str(datetime.datetime.now())
         res = self.client().post('/questions', json={'question': new_question, 'answer': '', 'difficulty': 4, 'category': 1})
+        data = json.loads(res.data)
         self.assertEqual(res.status_code, 400)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Bad request')
 
     def test_succesful_search_question(self):
-        search_term = 'test'
+        search_term = 'world cup'
         res = self.client().post('/questions', json={'searchTerm': search_term})
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertTrue(data['questions'])
-        self.assertTrue(data['totalQuestions'])
         self.assertTrue(data['currentCategory'])
+        self.assertEqual(data['totalQuestions'], 2)
+        self.assertEqual(len(data['questions']), 2)
 
-    #TODO write failed test for search question
+    def test_search_question_without_results(self):
+        search_term = 'salesforce'
+        res = self.client().post('/questions', json={'searchTerm': search_term})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertFalse(data['questions'])
+        self.assertEqual(data['currentCategory'], None)
+        self.assertEqual(data['totalQuestions'], 0)
+        self.assertEqual(len(data['questions']), 0)
+
+    def test_search_questions_nonexistent_page(self):
+        search_term = 'world cup'
+        res = self.client().post('/questions?page=100', json={'searchTerm': search_term})
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Not found')
+
 
     def test_succesful_return_quiz_question(self):
         category = Category.query.first()
@@ -127,10 +174,10 @@ class TriviaTestCase(unittest.TestCase):
         questions = Question.query.filter_by(category=category.id).all()
         previous_questions = [question.id for question in questions[1:]]
         res = self.client().post('/quizzes', json={'previous_questions': previous_questions, 'quiz_category': input_category})
+        data = json.loads(res.data)
         self.assertEqual(res.status_code, 422)
-
-
-    #TODO write error test for create question
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'Could not process request')
 
 
 

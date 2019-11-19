@@ -153,7 +153,7 @@ curl http://127.0.0.1:5000/questions?page=100
 
 This endpoint will have different behaviour depending on the body that is sent with the request. 
 
-- Search questions: When providing a searchTerm, the response will contain a list of questions that match the searchTerm, as well as the success value (True or False), the total number of questions matching the searchTerm and the current category. The list of questions is also paginated with 10 entries displayed per page and an optional page number can be provided as an argument in the request (ex POST /questions?page=2). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
+- Search questions: When providing a searchTerm, the response will return a list of questions that contain the searchTerm as a substring, as well as the success value (True or False), the total number of questions matching the searchTerm and the current category. The list of questions is also paginated with 10 entries displayed per page and an optional page number can be provided as an argument in the request (ex POST /questions?page=2). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
 
 ##### Example
 
@@ -330,7 +330,7 @@ curl http://127.0.0.1:5000/categories/4/questions?page=5
 
 #### POST /quizzes
 
-Returns the next question that a user will need to play a quiz. This endpoint expects a request body which will provide a list of ids for previous questions already answered as well as an optional category. If the category is provided, only questions for that category are returned. Otherwise, questions from any category will be returned. The response will contain the success value as well as the next question to be played.
+Returns the next question that a user will need to play a quiz. This endpoint expects a request body which will provide a list of ids for previous questions already answered as well as an optional category. If the category is provided, only questions for that category are returned. Otherwise, questions from any category will be returned. The response will contain the success value as well as the next question to be played. If a previous question argument is not provided, a 422 error will be thrown. In order to avoid this behaviour, at least an empty list should be provided as an argument (see examples).
 
 ##### Example
 
@@ -361,6 +361,31 @@ curl -X POST -H "Content-Type: application/json" -d '{"previous_questions":[16,1
     "question": "What boxer's original name is Cassius Clay?"
   }, 
   "success": true
+}
+```
+
+curl -X POST -H "Content-Type: application/json" -d '{"previous_questions":[]}' http://127.0.0.1:5000/quizzes
+
+```
+{
+  "question": {
+    "answer": "Muhammad Ali", 
+    "category": 4, 
+    "difficulty": 1, 
+    "id": 9, 
+    "question": "What boxer's original name is Cassius Clay?"
+  }, 
+  "success": true
+}
+```
+
+curl -X POST http://127.0.0.1:5000/quizzes
+
+```
+{
+  "error": 422, 
+  "message": "Could not process request", 
+  "success": false
 }
 ```
 
