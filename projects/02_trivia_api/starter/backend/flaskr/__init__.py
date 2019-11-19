@@ -1,3 +1,6 @@
+# Note: implementation follows format provided by Caryn McCarthy
+# in API Development and Documentation course
+
 import os
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -13,8 +16,6 @@ QUESTIONS_PER_PAGE = 10
 # in the database in order to display something, throw a 404 error
 # questions are formatted as a dictionary
 # to make them easily convertible to JSON to send as a response
-
-
 def paginate_questions(request, questions):
     page = request.args.get('page', 1, type=int)
     start = (page - 1)*QUESTIONS_PER_PAGE

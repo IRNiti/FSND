@@ -1,3 +1,6 @@
+# Note: implementation follows format provided by Caryn McCarthy
+# in API Development and Documentation course
+
 import os
 import unittest
 import json

@@ -65,3 +65,6 @@ python test_flaskr.py
 ```
 
 You can omit the dropdb command the first time you run the tests.
+
+
+Note: These instructions are provided as part of the starter code

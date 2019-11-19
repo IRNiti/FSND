@@ -29,3 +29,6 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser. T
 ```bash
 npm start
 ```
+
+
+Note: These instructions are provided as part of the starter code
