@@ -9,7 +9,12 @@ from models import setup_db, Question, Category
 QUESTIONS_PER_PAGE = 10
 
 # method to format questions by page numbers
+# if a page number is given that would require more items than available
+# in the database in order to display something, throw a 404 error
+# questions are formatted as a dictionary
+# to make them easily convertible to JSON to send as a response
 def paginate_questions(request, questions):
+  
   page = request.args.get('page', 1, type=int)
   start = (page - 1)*QUESTIONS_PER_PAGE
   end = start + QUESTIONS_PER_PAGE
@@ -35,6 +40,11 @@ def create_app(test_config=None):
     return response
 
 
+  # get all questions
+  # returns paginated questions, 
+  # all categories formatted as a dictionary with id: type as key-value pairs,
+  # number of total questions, 
+  # if there are any questions in the database, return the category of the first question as the current category
   @app.route('/questions')
   def get_questions():
 
@@ -59,6 +69,8 @@ def create_app(test_config=None):
       })
 
 
+  # get all categories
+  # returns all categories formatted as a dictionary with id: type as key-value pairs
   @app.route('/categories')
   def get_categories():
     categories = Category.query.all()
@@ -72,7 +84,12 @@ def create_app(test_config=None):
       'categories': formatted_categories
       })
 
-  #in Github this is specified as POST request??
+
+  # get all questions for a given category
+  # return paginated questions,
+  # number of total questions, 
+  # the given category formatted as a dictionary as defined in models.py
+  # in Github requirements and rubric this is specified as POST request, but in the frontend it is defined as GET, so following the frontend
   @app.route('/categories/<int:category_id>/questions')
   def get_questions_by_category(category_id):
     category = Category.query.get(category_id)
@@ -90,6 +107,7 @@ def create_app(test_config=None):
         'currentCategory': category.format()
         })
 
+  # delete a given question
   @app.route('/questions/<int:question_id>', methods=['DELETE'])
   def delete_question(question_id):
     try:
@@ -106,6 +124,16 @@ def create_app(test_config=None):
       abort(422)
 
 
+  # method to search questions or to create a new question
+  #
+  # the arguments passed in the request body will determine which operation is executed
+  # if a searchTerm is given, then all questions that contain it as a case insensitive substring will be returned
+  # returns paginated questions, number of questions and category of first question if any are found
+  #
+  # otherwise, the method expects the following arguments: question, answer, difficulty, category
+  # both question and answer arguments are required in this case
+  # if they are missing or empty, a 400 error will be thrown
+  # return id of created question
   @app.route('/questions', methods=['POST'])
   def create_question():
     body = request.get_json()
@@ -148,6 +176,11 @@ def create_app(test_config=None):
         abort(422)
 
 
+  # get question to play quiz
+  # expects previous_questions as a list of ids and an optional quiz_category as a dictionary as defined in models.py
+  # returns a question that is not in the previous_questions list
+  # if no category is provided, returns a question for any category
+  # if no previous_questions are provided, will throw a 422 error so at least an empty list of questions is expected
   @app.route('/quizzes', methods=['POST'])
   def get_quiz_question():
     try:
@@ -170,6 +203,8 @@ def create_app(test_config=None):
     except:
       abort(422)
 
+
+  # Error Handlers
 
   @app.errorhandler(404)
   def not_found(error):

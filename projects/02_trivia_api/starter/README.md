@@ -153,7 +153,8 @@ curl http://127.0.0.1:5000/questions?page=100
 
 This endpoint will have different behaviour depending on the body that is sent with the request. 
 
-- Search questions: When providing a searchTerm, the response will return a list of questions that contain the searchTerm as a substring, as well as the success value (True or False), the total number of questions matching the searchTerm and the current category. The list of questions is also paginated with 10 entries displayed per page and an optional page number can be provided as an argument in the request (ex POST /questions?page=2). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
+- Search questions: When providing a search term, the response will return a list of questions that contain the search term as a substring, as well as the success value (True or False), the total number of questions matching the search term and the current category. The list of questions is also paginated with 10 entries displayed per page and an optional page number can be provided as an argument in the request (ex POST /questions?page=2). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown. The search term is case insensitive. Arguments to be provided in the request body: searchTerm.
+
 
 ##### Example
 
@@ -197,7 +198,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"searchTerm":"world cup"}'
 }
 ```
 
-- Create question: When providing a question, answer, category and difficulty in the request body, a new question will be inserted into the database with the entered values. If the operation is succesful, the success value (True or False) as well as the id of the new question will be returned. As a note, the question and answer fields are mandatory so leaving one blank will throw a 400 error.
+- Create question: When providing a question, answer, category and difficulty in the request body, a new question will be inserted into the database with the entered values. If the operation is succesful, the success value (True or False) as well as the id of the new question will be returned. As a note, the question and answer fields are mandatory so leaving one blank will throw a 400 error. Arguments to be provided in the request body: question, answer, difficulty, category.
 
 ##### Example
 
@@ -330,7 +331,7 @@ curl http://127.0.0.1:5000/categories/4/questions?page=5
 
 #### POST /quizzes
 
-Returns the next question that a user will need to play a quiz. This endpoint expects a request body which will provide a list of ids for previous questions already answered as well as an optional category. If the category is provided, only questions for that category are returned. Otherwise, questions from any category will be returned. The response will contain the success value as well as the next question to be played. If a previous question argument is not provided, a 422 error will be thrown. In order to avoid this behaviour, at least an empty list should be provided as an argument (see examples).
+Returns the next question that a user will need to play a quiz. This endpoint expects a request body which will provide a list of ids for previous questions already answered as well as an optional category. If the category is provided, only questions for that category are returned. Otherwise, questions from any category will be returned. The response will contain the success value as well as the next question to be played. If a previous question argument is not provided, a 422 error will be thrown. In order to avoid this behaviour, at least an empty list should be provided as an argument (see examples). Arguments to be provided in the request body: previous_questions, quiz_category.
 
 ##### Example
 
