@@ -2,43 +2,365 @@
 
 ## Full Stack Trivia
 
-Udacity is invested in creating bonding experiences for its employees and students. A bunch of team members got the idea to hold trivia on a regular basis and created a  webpage to manage the trivia app and play the game, but their API experience is limited and still needs to be built out. 
+Udacity is invested in creating bonding experiences for its employees and students. A bunch of team members got the idea to hold trivia on a regular basis and created a  webpage to manage the trivia app and play the game. The API built here helps users interact with the database which stores the trivia questions as well as their associated categories giving them the ability to retrieve, create, delete, as well as search questions based on key words.
 
-That where you come in! Help them finish the trivia app so they can start holding trivia and seeing who's the most knowledgeable of the bunch. The application must:
+## Getting Started
 
-1) Display questions - both all questions and by category. Questions should show the question, category and difficulty rating by default and can show/hide the answer. 
-2) Delete questions.
-3) Add questions and require that they include question and answer text.
-4) Search for questions based on a text query string.
-5) Play the quiz game, randomizing either all questions or within a specific category. 
+### Pre-requisites and Local Development
 
-Completing this trivia app will give you the ability to structure plan, implement, and test an API - skills essential for enabling your future applications to communicate with others. 
+This project uses Python3 and Flask for the backend and Node for the frontend. See the README files in the [backend](./backend) and [frontend](./frontend) directories respectively for instructions on how to install dependencies and how to run the application. As a general note, run the backend server first and then start the frontend. 
 
-## Tasks
+## API Reference
 
-There are `TODO` comments throughout project. Start by reading the READMEs in:
+### Getting Started
 
-1. [`./frontend/`](./frontend/README.md)
-2. [`./backend/`](./backend/README.md)
+- Base URL: The application is currently only running locally, so navigate to [http://127.0.0.1:3000](http://127.0.0.1:3000) to view it in the browser. As a side note, the backend is hosted at [http://127.0.0.1:5000](http://127.0.0.1:5000) and this is the URL that should be used when testing endpoints with either Postman or curl.
 
-We recommend following the instructions in those files in order. This order will look familiar from our prior work in the course.
+- Authentication: There is no need to authenticate and API keys are not necessary in order to make requests to the server in this version of the application.
 
-## Starting and Submitting the Project
+### Error Handling
 
-[Fork](https://help.github.com/en/articles/fork-a-repo) the [project repository]() and [Clone](https://help.github.com/en/articles/cloning-a-repository) your forked repository to your machine. Work on the project locally and make sure to push all your changes to the remote repository before submitting the link to your repository in the Classroom. 
+Errors are returned as JSON objects in the following format
 
-## About the Stack
+```
+{
+    'success': False,
+    'error': 404,
+    'message': 'Not found'
+}
+```
 
-We started the full stack application for you. It is desiged with some key functional areas:
+The following error codes can be returned by the application along with the associated error message
 
-### Backend
+- 400: Bad request
+- 404: Not found
+- 422: Could not process request
+- 405: Method not allowed
+- 500: Internal Server Error
 
-The `./backend` directory contains a partially completed Flask and SQLAlchemy server. You will work primarily in app.py to define your endpoints and can reference models.py for DB and SQLAlchemy setup. 
+### Endpoints
 
-### Frontend
+#### GET /questions
 
-The `./frontend` directory contains a complete React frontend to consume the data from the Flask server. You will need to update the endpoints after you define them in the backend. Those areas are marked with TODO and can be searched for expediency. 
+Returns a list of trivia questions, the success value (True or False), the total number of questions, a dictionary containing all the categories organized as key-value pairs of id-type, as well as the current category. The result is paginated with 10 questions displayed per page and an optional argument for the page number can be passed in the request (ex: GET /questions?page=3). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
 
-Pay special attention to what data the frontend is expecting from each API response to help guide how you format your API. 
+##### Example
 
-[View the README.md within ./frontend for more details.](./frontend/README.md)
+curl http://127.0.0.1:5000/questions
+
+```
+{
+  "categories": {
+    "1": "Science", 
+    "2": "Art", 
+    "3": "Geography", 
+    "4": "History", 
+    "5": "Entertainment", 
+    "6": "Sports"
+  }, 
+  "currentCategory": {
+    "id": 4, 
+    "type": "History"
+  }, 
+  "questions": [
+    {
+      "answer": "Muhammad Ali", 
+      "category": 4, 
+      "difficulty": 1, 
+      "id": 9, 
+      "question": "What boxer's original name is Cassius Clay?"
+    }, 
+    {
+      "answer": "Apollo 13", 
+      "category": 5, 
+      "difficulty": 4, 
+      "id": 2, 
+      "question": "What movie earned Tom Hanks his third straight Oscar nomination, in 1996?"
+    }, 
+    {
+      "answer": "Tom Cruise", 
+      "category": 5, 
+      "difficulty": 4, 
+      "id": 4, 
+      "question": "What actor did author Anne Rice first denounce, then praise in the role of her beloved Lestat?"
+    }, 
+    {
+      "answer": "Edward Scissorhands", 
+      "category": 5, 
+      "difficulty": 3, 
+      "id": 6, 
+      "question": "What was the title of the 1990 fantasy directed by Tim Burton about a young man with multi-bladed appendages?"
+    }, 
+    {
+      "answer": "Brazil", 
+      "category": 6, 
+      "difficulty": 3, 
+      "id": 10, 
+      "question": "Which is the only team to play in every soccer World Cup tournament?"
+    }, 
+    {
+      "answer": "Uruguay", 
+      "category": 6, 
+      "difficulty": 4, 
+      "id": 11, 
+      "question": "Which country won the first ever soccer World Cup in 1930?"
+    }, 
+    {
+      "answer": "George Washington Carver", 
+      "category": 4, 
+      "difficulty": 2, 
+      "id": 12, 
+      "question": "Who invented Peanut Butter?"
+    }, 
+    {
+      "answer": "Lake Victoria", 
+      "category": 3, 
+      "difficulty": 2, 
+      "id": 13, 
+      "question": "What is the largest lake in Africa?"
+    }, 
+    {
+      "answer": "The Palace of Versailles", 
+      "category": 3, 
+      "difficulty": 3, 
+      "id": 14, 
+      "question": "In which royal palace would you find the Hall of Mirrors?"
+    }, 
+    {
+      "answer": "Agra", 
+      "category": 3, 
+      "difficulty": 2, 
+      "id": 15, 
+      "question": "The Taj Mahal is located in which Indian city?"
+    }
+  ], 
+  "success": true, 
+  "total_questions": 21
+}
+```
+
+curl http://127.0.0.1:5000/questions?page=100
+
+```
+{
+  "error": 404, 
+  "message": "Not found", 
+  "success": false
+}
+```
+
+#### POST /questions
+
+This endpoint will have different behaviour depending on the body that is sent with the request. 
+
+- Search questions: When providing a searchTerm, the response will contain a list of questions that match the searchTerm, as well as the success value (True or False), the total number of questions matching the searchTerm and the current category. The list of questions is also paginated with 10 entries displayed per page and an optional page number can be provided as an argument in the request (ex POST /questions?page=2). If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
+
+##### Example
+
+curl -X POST -H "Content-Type: application/json" -d '{"searchTerm":"world cup"}' http://127.0.0.1:5000/questions
+
+```
+{
+  "currentCategory": {
+    "id": 6, 
+    "type": "Sports"
+  }, 
+  "questions": [
+    {
+      "answer": "Brazil", 
+      "category": 6, 
+      "difficulty": 3, 
+      "id": 10, 
+      "question": "Which is the only team to play in every soccer World Cup tournament?"
+    }, 
+    {
+      "answer": "Uruguay", 
+      "category": 6, 
+      "difficulty": 4, 
+      "id": 11, 
+      "question": "Which country won the first ever soccer World Cup in 1930?"
+    }
+  ], 
+  "success": true, 
+  "totalQuestions": 2
+}
+
+```
+
+curl -X POST -H "Content-Type: application/json" -d '{"searchTerm":"world cup"}' http://127.0.0.1:5000/questions?page=10
+
+```
+{
+  "error": 404, 
+  "message": "Not found", 
+  "success": false
+}
+```
+
+- Create question: When providing a question, answer, category and difficulty in the request body, a new question will be inserted into the database with the entered values. If the operation is succesful, the success value (True or False) as well as the id of the new question will be returned. As a note, the question and answer fields are mandatory so leaving one blank will throw a 400 error.
+
+##### Example
+
+curl -X POST -H "Content-Type: application/json" -d '{"question":"Who wrote Harry Potter", "answer":"J K Rowling", "difficulty":1, "category":5}' http://127.0.0.1:5000/questions
+
+```
+{
+  "question_id": 30, 
+  "success": true
+}
+```
+
+curl -X POST -H "Content-Type: application/json" -d '{"question":"Who wrote Harry Potter", "difficulty":1, "category":5}' http://127.0.0.1:5000/questions
+
+```
+{
+  "error": 400, 
+  "message": "Bad request", 
+  "success": false
+}
+```
+
+#### DELETE /questions/<int:question_id>
+
+Deletes the question with the id passed in as an argument. If the given id does not correspond to a question that exists in the database, a 422 error will be thrown. On the other hand, if the operation is succesful, the success value will be returned in the response.
+
+##### Example
+
+curl -X DELETE http://127.0.0.1:5000/questions/31
+
+```
+{
+  "success": true
+}
+```
+
+curl -X DELETE http://127.0.0.1:5000/questions/100
+
+```
+{
+  "error": 422, 
+  "message": "Could not process request", 
+  "success": false
+}
+```
+
+#### GET /categories
+
+Returns a dictionary with all the categories structured with the ids as the keys and the category type as the values. Also returns the success value.
+
+##### Example
+
+curl http://127.0.0.1:5000/categories
+
+```
+{
+  "categories": {
+    "1": "Science", 
+    "2": "Art", 
+    "3": "Geography", 
+    "4": "History", 
+    "5": "Entertainment", 
+    "6": "Sports"
+  }, 
+  "success": true
+}
+```
+
+#### GET /categories/<int:category_id>/questions
+
+Returns a list of questions associated to the category id given as the argument, as well as the total number of questions in the given category, the success value (True or False) and the current category. The questions will be paginated with 10 entries per page and an optional page number can be provided as an argument in the request (ex GET /categories/1/questions?page=2). If the provided category id does not correspond to a value existing in the database, a 422 error will be thrown. If a page number that exceeds the number of available entries is provided, a 404 error will be thrown.
+
+##### Example
+
+curl http://127.0.0.1:5000/categories/4/questions
+
+```
+{
+  "currentCategory": {
+    "id": 4, 
+    "type": "History"
+  }, 
+  "questions": [
+    {
+      "answer": "Muhammad Ali", 
+      "category": 4, 
+      "difficulty": 1, 
+      "id": 9, 
+      "question": "What boxer's original name is Cassius Clay?"
+    }, 
+    {
+      "answer": "George Washington Carver", 
+      "category": 4, 
+      "difficulty": 2, 
+      "id": 12, 
+      "question": "Who invented Peanut Butter?"
+    }, 
+    {
+      "answer": "Scarab", 
+      "category": 4, 
+      "difficulty": 4, 
+      "id": 23, 
+      "question": "Which dung beetle was worshipped by the ancient Egyptians?"
+    }
+  ], 
+  "success": true, 
+  "totalQuestions": 3
+}
+```
+
+curl http://127.0.0.1:5000/categories/20/questions
+
+```
+{
+  "error": 422, 
+  "message": "Could not process request", 
+  "success": false
+}
+```
+
+curl http://127.0.0.1:5000/categories/4/questions?page=5
+
+```
+{
+  "error": 404, 
+  "message": "Not found", 
+  "success": false
+}
+```
+
+#### POST /quizzes
+
+Returns the next question that a user will need to play a quiz. This endpoint expects a request body which will provide a list of ids for previous questions already answered as well as an optional category. If the category is provided, only questions for that category are returned. Otherwise, questions from any category will be returned. The response will contain the success value as well as the next question to be played.
+
+##### Example
+
+curl -X POST -H "Content-Type: application/json" -d '{"previous_questions":[16,17], "quiz_category":{"type":"Art", "id":2}}' http://127.0.0.1:5000/quizzes
+
+```
+{
+  "question": {
+    "answer": "One", 
+    "category": 2, 
+    "difficulty": 4, 
+    "id": 18, 
+    "question": "How many paintings did Van Gogh sell in his lifetime?"
+  }, 
+  "success": true
+}
+```
+
+curl -X POST -H "Content-Type: application/json" -d '{"previous_questions":[16,17]}' http://127.0.0.1:5000/quizzes
+
+```
+{
+  "question": {
+    "answer": "Muhammad Ali", 
+    "category": 4, 
+    "difficulty": 1, 
+    "id": 9, 
+    "question": "What boxer's original name is Cassius Clay?"
+  }, 
+  "success": true
+}
+```
+
