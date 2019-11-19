@@ -157,7 +157,7 @@ def create_app(test_config=None):
       difficulty = body.get('difficulty', None)
       category = body.get('category', None)
 
-      if(answer == '' or question == ''):
+      if(answer == '' or question == '' or answer is None or question is None):
         abort(400)
 
       try:
@@ -180,7 +180,7 @@ def create_app(test_config=None):
       category = body.get('quiz_category', None)
       next_question = None
 
-      if (category['id'] == 0 ):
+      if (category is None or category['id'] == 0 ):
         next_question = Question.query.filter(~Question.id.in_(previous_questions)).first()
       else:
         next_question = Question.query.filter_by(category=category['id']).filter(~Question.id.in_(previous_questions)).first()
