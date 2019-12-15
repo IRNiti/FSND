@@ -31,7 +31,7 @@ class AuthError(Exception):
     return the token part of the header
 '''
 def get_token_auth_header():
-   #raise Exception('Not Implemented')
+    
     if 'Authorization' not in request.headers:
         abort(401)
 
@@ -86,9 +86,6 @@ def verify_decode_jwt(token):
 
     # GET THE DATA IN THE TOKEN HEADER
     unverified_header = jwt.get_unverified_header(token)
-
-    print(unverified_header)
-    print(jwks)
 
     # CHOOSE OUR KEY
     rsa_key = {}

@@ -32,7 +32,6 @@ CORS(app)
 #@requires_auth('')
 def get_drinks():
     drinks = Drink.query.all()
-    print(drinks)
     formatted_drinks = [drink.short() for drink in drinks]
 
     return jsonify({
@@ -108,14 +107,11 @@ def patch_drink(jwt, drink_id):
         body = request.get_json()
         title = body.get('title', None)
         recipe = str(json.dumps(body.get('recipe', None)))
-        print('title: '+title)
-        print('recipe: '+recipe)
+        
         if title is not None and title != '':
             drink.title = title
-            print('title is not none')
         if recipe != 'null' and recipe != '':
             drink.recipe = recipe
-            print('recipe is None')
         drink.update()
         drinks = []
         drinks.append(drink.long())
