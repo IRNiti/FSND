@@ -77,10 +77,12 @@ def post_drink(jwt):
     recipe = str(json.dumps(body.get('recipe', None)))
     new_drink = Drink(title=title, recipe=recipe)
     new_drink.insert()
+    drinks = []
+    drinks.append(new_drink.long())
 
     return jsonify({
         'success': True,
-        'drinks': new_drink.long()
+        'drinks': drinks
         })
 
 '''
@@ -94,6 +96,34 @@ def post_drink(jwt):
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:drink_id>', methods=['PATCH'])
+@requires_auth('patch:drinks')
+def patch_drink(jwt, drink_id):
+
+    drink = Drink.query.get(drink_id)
+
+    if drink is None:
+        abort(404)
+    else:
+        body = request.get_json()
+        title = body.get('title', None)
+        recipe = str(json.dumps(body.get('recipe', None)))
+        print('title: '+title)
+        print('recipe: '+recipe)
+        if title is not None and title != '':
+            drink.title = title
+            print('title is not none')
+        if recipe != 'null' and recipe != '':
+            drink.recipe = recipe
+            print('recipe is None')
+        drink.update()
+        drinks = []
+        drinks.append(drink.long())
+
+        return jsonify({
+            'success': True,
+            'drinks': drinks
+            })
 
 
 '''
@@ -135,7 +165,13 @@ def unprocessable(error):
 @TODO implement error handler for 404
     error handler should conform to general task above 
 '''
-
+@app.errorhandler(404)
+def unprocessable(error):
+    return jsonify({
+                    "success": False, 
+                    "error": 404,
+                    "message": "not found"
+                    }), 404
 
 '''
 @TODO implement error handler for AuthError
