@@ -23,9 +23,12 @@ class AuthError(Exception):
 ## Auth Header
 
 '''
-@TODO implement get_token_auth_header() method
-    it should attempt to get the header from the request
-        it should raise an AuthError if no header is present
+method to get the auth token from the request header
+it attempts to get the header from the request
+it raises an AuthError if no header is present
+it attempts to split bearer and the token
+it raises an AuthError if the header is malformed
+return the token part of the header
 '''
 def get_token_auth_header():
     
@@ -51,7 +54,15 @@ def get_token_auth_header():
 
     return header_parts[1]
 
-
+'''
+method to check if user has a given permission
+@INPUTS
+        permission: string permission (i.e. 'post:drink')
+        payload: decoded jwt payload
+it raises an AuthError if permissions are not included in the payload
+it raises an AuthError if the requested permission string is not in the payload permissions array
+return true otherwise
+'''
 def check_permissions(permission, payload):
     if 'permissions' not in payload:
         raise AuthError({
@@ -66,7 +77,16 @@ def check_permissions(permission, payload):
 
     return True
 
-
+'''
+method to verify and decode jwt
+@INPUTS
+        token: a json web token (string)
+        it should be an Auth0 token with key id (kid)
+method verifies the token using Auth0 /.well-known/jwks.json
+it decodes the payload from the token
+it validates the claims
+return the decoded payload
+'''
 def verify_decode_jwt(token):
     # GET THE PUBLIC KEY FROM AUTH0
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
@@ -85,7 +105,6 @@ def verify_decode_jwt(token):
 
     for key in jwks['keys']:
         if key['kid'] == unverified_header['kid']:
-            print('keys match!')
             rsa_key = {
                 'kty': key['kty'],
                 'kid': key['kid'],
@@ -94,7 +113,7 @@ def verify_decode_jwt(token):
                 'e': key['e']
             }
     
-    # Finally, verify!!!
+    # verify token
     if rsa_key:
         try:
             # USE THE KEY TO VALIDATE THE JWT
@@ -129,7 +148,15 @@ def verify_decode_jwt(token):
                 'description': 'Unable to find the appropriate key.'
             }, 400)
 
-
+'''
+Decorator method
+    @INPUTS
+        permission: string permission (i.e. 'post:drink')
+it uses the get_token_auth_header method to get the token
+it uses the verify_decode_jwt method to decode the jwt
+it uses the check_permissions method validate claims and check the requested permission
+return the decorator which passes the decoded payload to the decorated method
+'''
 def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)
