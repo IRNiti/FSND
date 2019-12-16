@@ -29,6 +29,7 @@ it raises an AuthError if no header is present
 it attempts to split bearer and the token
 it raises an AuthError if the header is malformed
 return the token part of the header
+code based on Udacity class lecture on Authentication and Authorization
 '''
 def get_token_auth_header():
     
@@ -62,6 +63,7 @@ method to check if user has a given permission
 it raises an AuthError if permissions are not included in the payload
 it raises an AuthError if the requested permission string is not in the payload permissions array
 return true otherwise
+code based on Udacity class lecture on Authentication and Authorization
 '''
 def check_permissions(permission, payload):
     if 'permissions' not in payload:
@@ -86,6 +88,7 @@ method verifies the token using Auth0 /.well-known/jwks.json
 it decodes the payload from the token
 it validates the claims
 return the decoded payload
+code based on Udacity class lecture on Authentication and Authorization
 '''
 def verify_decode_jwt(token):
     # GET THE PUBLIC KEY FROM AUTH0
